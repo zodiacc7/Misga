@@ -194,7 +194,8 @@ class SmsReceiver : BroadcastReceiver() {
                     contactName = contactName,
                     body = fullBody,
                     action = filterResult.action,
-                    messageId = messageId
+                    messageId = messageId,
+                    timestamp = timestamp
                 )
             }
         }

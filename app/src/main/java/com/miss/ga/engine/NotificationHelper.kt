@@ -6,9 +6,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.provider.Telephony
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.app.Person
 import androidx.core.app.RemoteInput
 import com.miss.ga.MainActivity
 import com.miss.ga.R
@@ -60,7 +62,8 @@ class NotificationHelper private constructor(private val context: Context) {
         contactName: String?,
         body: String,
         action: FilterAction,
-        messageId: Long
+        messageId: Long,
+        timestamp: Long = System.currentTimeMillis()
     ) {
         // If action is SPAM, do NOT show any notification at all
         if (action == FilterAction.SPAM) {
@@ -87,11 +90,63 @@ class NotificationHelper private constructor(private val context: Context) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val userPerson = Person.Builder()
+            .setName(context.getString(R.string.notification_user_me))
+            .setKey("user_self")
+            .build()
+
+        val senderPerson = Person.Builder()
+            .setName(displayName)
+            .setKey(sender)
+            .build()
+
+        val existingStyle = try {
+            notificationManager.activeNotifications
+                ?.find { it.id == notificationId }
+                ?.notification
+                ?.let { NotificationCompat.MessagingStyle.extractMessagingStyleFromNotification(it) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to extract existing MessagingStyle", e)
+            null
+        }
+
+        val baseStyle = existingStyle ?: run {
+            val style = NotificationCompat.MessagingStyle(userPerson)
+            style.setConversationTitle(null)
+            style.setGroupConversation(false)
+
+            val unreadList = getUnreadMessagesForThread(threadId)
+            for ((msgBody, msgDate) in unreadList) {
+                style.addMessage(msgBody, msgDate, senderPerson)
+            }
+            style
+        }
+
+        baseStyle.setConversationTitle(null)
+        baseStyle.setGroupConversation(false)
+
+        val alreadyAdded = baseStyle.messages.any { it.text?.toString() == body && it.timestamp == timestamp }
+        if (!alreadyAdded) {
+            baseStyle.addMessage(body, timestamp, senderPerson)
+        }
+
+        val finalStyle = if (baseStyle.messages.size > MAX_NOTIFICATION_MESSAGES) {
+            val trimmedStyle = NotificationCompat.MessagingStyle(userPerson)
+            trimmedStyle.setConversationTitle(null)
+            trimmedStyle.setGroupConversation(false)
+            for (msg in baseStyle.messages.takeLast(MAX_NOTIFICATION_MESSAGES)) {
+                trimmedStyle.addMessage(msg)
+            }
+            trimmedStyle
+        } else {
+            baseStyle
+        }
+
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.sym_action_chat)
+            .setStyle(finalStyle)
             .setContentTitle(displayName)
             .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setContentIntent(contentPendingIntent)
             .setAutoCancel(true)
             .setPriority(if (action == FilterAction.NORMAL) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_LOW)
@@ -103,6 +158,34 @@ class NotificationHelper private constructor(private val context: Context) {
         } catch (e: SecurityException) {
             Log.w(TAG, "POST_NOTIFICATIONS permission denied", e)
         }
+    }
+
+    private fun getUnreadMessagesForThread(threadId: Long): List<Pair<String, Long>> {
+        val list = mutableListOf<Pair<String, Long>>()
+        if (threadId <= 0) return list
+        try {
+            val projection = arrayOf(Telephony.Sms.BODY, Telephony.Sms.DATE)
+            val selection = "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0"
+            val selectionArgs = arrayOf(threadId.toString())
+            context.contentResolver.query(
+                Telephony.Sms.Inbox.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "${Telephony.Sms.DATE} ASC"
+            )?.use { cursor ->
+                val bodyIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIdx = cursor.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                while (cursor.moveToNext() && list.size < MAX_NOTIFICATION_MESSAGES) {
+                    val msgBody = cursor.getString(bodyIdx) ?: continue
+                    val msgDate = cursor.getLong(dateIdx)
+                    list.add(msgBody to msgDate)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to query unread messages for thread $threadId", e)
+        }
+        return list
     }
 
     private fun buildActions(threadId: Long, sender: String): List<NotificationCompat.Action> {
@@ -161,6 +244,7 @@ class NotificationHelper private constructor(private val context: Context) {
         const val EXTRA_ADDRESS = "EXTRA_ADDRESS"
         const val EXTRA_CONTACT_NAME = "EXTRA_CONTACT_NAME"
         const val EXTRA_MESSAGE_ID = "EXTRA_MESSAGE_ID"
+        const val MAX_NOTIFICATION_MESSAGES = 25
 
         private const val TAG = "NotificationHelper"
 

@@ -156,7 +156,8 @@ object FakeSmsSimulator {
                 contactName = contactName,
                 body = body,
                 action = filterResult.action,
-                messageId = messageId
+                messageId = messageId,
+                timestamp = now
             )
         }
 
