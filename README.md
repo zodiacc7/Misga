@@ -14,6 +14,13 @@ Iran's SMS has turned into a pile of spam messages and advertisements. Almost ev
 
 Misga is built to fix this. By default it ships with predefined regex filters that silence those messages and mark them as spam.
 
+<p float="left"> <img width="45%" alt="screenshot-2026-07-09_16-38-14" src="https://github.com/user-attachments/assets/70c8d05b-a744-4bfd-925d-70e45562cd45" /> 
+<img width="45%" alt="screenshot-2026-07-09_16-36-25" src="https://github.com/user-attachments/assets/6a55f74f-1ed2-4bb4-9f46-48e67ee25283" /> </p>
+<p float="left"> <img width="45%" alt="screenshot-2026-07-09_16-36-14" src="https://github.com/user-attachments/assets/a1687a5f-4f0e-4b13-8e30-a98bf1988d46" />
+<img width="45%" alt="screenshot-2026-07-09_16-35-35" src="https://github.com/user-attachments/assets/6076411c-bcb4-4714-973f-44a7fdba4ae8" /></p>
+
+
+
 ## Features
 
 - **Regex filters with allowlist priority.** Allowlist rules are evaluated first, so you will never miss an important OTP code or an important message.
