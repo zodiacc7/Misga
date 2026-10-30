@@ -108,17 +108,14 @@ import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
-import com.ramesh.sms.ui.components.CreateTabDialog
 import com.ramesh.sms.ui.components.CustomizationSheet
 import com.ramesh.sms.ui.components.DefaultSmsBanner
 import com.ramesh.sms.ui.components.DeleteTabDialog
-import com.ramesh.sms.ui.components.ManageTabSendersDialog
-import com.ramesh.sms.ui.components.RenameTabDialog
 import com.ramesh.sms.ui.components.SenderTabRow
 import com.ramesh.sms.ui.components.SimBadge
 import com.ramesh.sms.ui.components.SimFilterRow
-import com.ramesh.sms.ui.components.TabFilterDialog
-import com.ramesh.sms.ui.components.TabOptionsMenuSheet
+import com.ramesh.sms.ui.components.TabEditorDialog
+import com.ramesh.sms.ui.components.TabOptionsSheet
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.senderDisplayName
 import com.ramesh.sms.ui.util.contentAware
@@ -129,6 +126,9 @@ import java.util.Locale
 private val ListBottomFabPadding = 88.dp
 private val AvatarDividerInset = 78.dp
 private val NoSelectionIds: Set<Long> = emptySet()
+
+/** Sentinel used by the tab editor to mean "creating a brand new tab". */
+private const val NEW_TAB_ID = -1L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,12 +168,10 @@ fun ConversationsScreen(
     val hasMultipleSims = state.availableSims.size > 1
 
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
-    var showCreateTabDialog by remember { mutableStateOf(false) }
-    var tabToRename by remember { mutableStateOf<SenderTab?>(null) }
+    // null = editor closed, NEW_TAB_ID = creating a tab, otherwise the id of the tab being edited.
+    var tabEditorId by remember { mutableStateOf<Long?>(null) }
     var tabToDelete by remember { mutableStateOf<SenderTab?>(null) }
-    var tabToManageSenders by remember { mutableStateOf<SenderTab?>(null) }
     var tabForOptionsMenu by remember { mutableStateOf<SenderTab?>(null) }
-    var tabToEditFilters by remember { mutableStateOf<SenderTab?>(null) }
     var showAddToTabDialog by remember { mutableStateOf(false) }
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
@@ -332,7 +330,7 @@ fun ConversationsScreen(
                     selectedTabId = state.selectedTabId,
                     threads = state.threads,
                     onSelectTab = { viewModel.selectTab(it) },
-                    onCreateTabClick = { showCreateTabDialog = true },
+                    onCreateTabClick = { tabEditorId = NEW_TAB_ID },
                     onTabOptionsClick = { tabForOptionsMenu = it },
                     onReorderTabs = { viewModel.reorderTabs(it) },
                     modifier = Modifier.fillMaxWidth()
@@ -636,7 +634,7 @@ fun ConversationsScreen(
                         if (selectedTab != null) {
                             Spacer(modifier = Modifier.height(16.dp))
                             FilledTonalButton(
-                                onClick = { tabToManageSenders = selectedTab },
+                                onClick = { tabEditorId = selectedTab.id },
                                 shape = PillShape
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -686,26 +684,39 @@ fun ConversationsScreen(
         )
     }
 
-    if (showCreateTabDialog) {
-        CreateTabDialog(
-            onDismiss = { showCreateTabDialog = false },
-            onCreate = { name ->
-                viewModel.createTab(name) {
-                    Toast.makeText(context, "Created tab \"$name\"", Toast.LENGTH_SHORT).show()
+    tabEditorId?.let { editingId ->
+        val liveTab = if (editingId == NEW_TAB_ID) null else state.tabs.find { it.id == editingId }
+        if (editingId == NEW_TAB_ID || liveTab != null) {
+            TabEditorDialog(
+                initialTab = liveTab,
+                allThreads = state.threads,
+                onDismiss = { tabEditorId = null },
+                onSave = { name, addresses, filterMask ->
+                    if (liveTab == null) {
+                        viewModel.createTab(name, addresses, filterMask) {
+                            Toast.makeText(context, "Created tab \"$name\"", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        viewModel.saveTab(liveTab.id, name, addresses, filterMask)
+                        Toast.makeText(context, "Saved tab \"$name\"", Toast.LENGTH_SHORT).show()
+                    }
+                    tabEditorId = null
                 }
-                showCreateTabDialog = false
-            }
-        )
+            )
+        }
     }
 
-    tabToRename?.let { tab ->
-        RenameTabDialog(
-            currentName = tab.name,
-            onDismiss = { tabToRename = null },
-            onRename = { newName ->
-                viewModel.renameTab(tab.id, newName)
-                Toast.makeText(context, "Renamed tab to \"$newName\"", Toast.LENGTH_SHORT).show()
-                tabToRename = null
+    tabForOptionsMenu?.let { tab ->
+        TabOptionsSheet(
+            tab = tab,
+            onDismiss = { tabForOptionsMenu = null },
+            onEdit = {
+                tabEditorId = tab.id
+                tabForOptionsMenu = null
+            },
+            onDelete = {
+                tabToDelete = tab
+                tabForOptionsMenu = null
             }
         )
     }
@@ -718,55 +729,6 @@ fun ConversationsScreen(
                 viewModel.deleteTab(tab.id)
                 Toast.makeText(context, "Deleted tab \"${tab.name}\"", Toast.LENGTH_SHORT).show()
                 tabToDelete = null
-            }
-        )
-    }
-
-    tabForOptionsMenu?.let { tab ->
-        tabToEditFilters?.let { filterTab ->
-            val liveTab = state.tabs.find { it.id == filterTab.id } ?: filterTab
-            TabFilterDialog(
-                tab = liveTab,
-                onToggle = { mask, enabled -> viewModel.setTabFilterFlag(liveTab.id, mask, enabled) },
-                onDismiss = { tabToEditFilters = null }
-            )
-        }
-
-        TabOptionsMenuSheet(
-            tab = tab,
-            onDismiss = { tabForOptionsMenu = null },
-            onManageSenders = {
-                tabToManageSenders = tab
-                tabForOptionsMenu = null
-            },
-            onRename = {
-                tabToRename = tab
-                tabForOptionsMenu = null
-            },
-            onEditFilters = {
-                tabToEditFilters = tab
-                tabForOptionsMenu = null
-            },
-            onDelete = {
-                tabToDelete = tab
-                tabForOptionsMenu = null
-            }
-        )
-    }
-
-    tabToManageSenders?.let { tab ->
-        ManageTabSendersDialog(
-            tab = tab,
-            allThreads = state.threads,
-            onDismiss = { tabToManageSenders = null },
-            onSave = { addresses ->
-                viewModel.setTabSenders(tab.id, addresses)
-                Toast.makeText(
-                    context,
-                    "Updated senders in \"${tab.name}\"",
-                    Toast.LENGTH_SHORT
-                ).show()
-                tabToManageSenders = null
             }
         )
     }
@@ -788,7 +750,7 @@ fun ConversationsScreen(
             },
             onCreateNewTab = {
                 showAddToTabDialog = false
-                showCreateTabDialog = true
+                tabEditorId = NEW_TAB_ID
             }
         )
     }

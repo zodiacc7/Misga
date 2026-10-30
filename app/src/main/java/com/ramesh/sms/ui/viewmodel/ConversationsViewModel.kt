@@ -56,7 +56,7 @@ data class ConversationsUiState(
     val showTabs: Boolean = true,
     val showSimFilter: Boolean = true,
     val noSpamForContacts: Boolean = false,
-    val deliveryReports: Boolean = true,
+    val deliveryReports: Boolean = false,
     val sendDelaySeconds: Int = 0,
     val autoDeleteLimit: Int = 0,
     val lockScreenPrivacy: LockScreenPrivacy = LockScreenPrivacy.FULL,
@@ -650,13 +650,45 @@ class ConversationsViewModel(
         )
     }
 
-    fun createTab(name: String, addresses: Collection<String> = emptyList(), onCreated: (Long) -> Unit = {}) {
+    fun createTab(
+        name: String,
+        addresses: Collection<String> = emptyList(),
+        filterMask: Int = 0,
+        onCreated: (Long) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            val id = repository.createTab(name, addresses)
+            val id = repository.createTab(name, addresses, filterMask)
             if (id != -1L) {
                 selectTab(id)
                 onCreated(id)
             }
+        }
+    }
+
+    /**
+     * Saves a tab edited in the unified editor: name, senders and the content filter mask.
+     * Writes everything first and then reloads from the database, so the refreshed state can
+     * never clobber the values that were just written.
+     */
+    fun saveTab(tabId: Long, name: String, addresses: Collection<String>, filterMask: Int) {
+        viewModelScope.launch {
+            repository.updateTabName(tabId, name)
+            repository.setTabSenders(tabId, addresses)
+            repository.updateTabFilterMask(tabId, filterMask)
+            val tabs = repository.getAllTabs()
+            val current = _uiState.value
+            val selected = current.selectedTabId?.takeIf { id -> tabs.any { it.id == id } }
+            _uiState.value = current.copy(
+                tabs = tabs,
+                selectedTabId = selected,
+                filteredThreads = filterThreads(
+                    threads = current.threads,
+                    query = current.searchQuery.trim(),
+                    selectedTabId = selected,
+                    tabs = tabs,
+                    selectedSimFilterSubId = current.selectedSimFilterSubId
+                )
+            )
         }
     }
 
@@ -678,6 +710,23 @@ class ConversationsViewModel(
         )
         viewModelScope.launch {
             repository.updateTabFilterMask(tabId, updatedTab.filterMask)
+            // Re-read from the database so the UI matches what was actually persisted.
+            val tabs = repository.getAllTabs()
+            val fresh = tabs.find { it.id == tabId }
+            if (fresh != null && fresh.filterMask != updatedTab.filterMask) {
+                val current = _uiState.value
+                val revertedTabs = current.tabs.map { if (it.id == tabId) fresh else it }
+                _uiState.value = current.copy(
+                    tabs = revertedTabs,
+                    filteredThreads = filterThreads(
+                        threads = current.threads,
+                        query = current.searchQuery.trim(),
+                        selectedTabId = current.selectedTabId,
+                        tabs = revertedTabs,
+                        selectedSimFilterSubId = current.selectedSimFilterSubId
+                    )
+                )
+            }
         }
     }
 

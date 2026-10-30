@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_new_title">تب جدید</string>
+    <string name="tab_edit_title">ویرایش تب</string>
+    <string name="tab_name_label">نام تب</string>
+    <string name="tab_show_only">فقط نمایش</string>
+    <string name="tab_filter_spam">اسپم</string>
+    <string name="tab_filter_not_spam">غیر اسپم</string>
+    <string name="tab_filter_contacts">مخاطبین</string>
+    <string name="tab_filter_unknown">ناشناس</string>
+    <string name="tab_senders_selected">فرستنده‌ها (%1$d انتخاب‌شده)</string>
+    <string name="tab_clear">پاک کردن</string>
+    <string name="tab_search_senders">جستجوی فرستنده…</string>
+    <string name="tab_no_senders">هنوز فرستنده‌ای برای نمایش نیست.</string>
+    <string name="tab_editor_hint_ok">این تب گفتگوهایی را نشان می‌دهد که با فرستنده‌ها و فیلترهای انتخاب‌شده هم‌خوانی دارند.</string>
+    <string name="tab_editor_hint_need">حداقل یک فرستنده یا یک فیلتر انتخاب کنید.</string>
+    <string name="tab_cancel">انصراف</string>
+    <string name="tab_save">ذخیره</string>
+    <string name="tab_row_edit">ویرایش تب</string>
+    <string name="tab_row_edit_desc">نام، فرستنده‌ها و فیلترها</string>
+    <string name="tab_row_senders">فرستنده‌ها و فیلترها</string>
+    <string name="tab_row_senders_desc">چه کسانی در این تب دیده شوند</string>
+    <string name="tab_row_delete">حذف تب</string>
+</resources>

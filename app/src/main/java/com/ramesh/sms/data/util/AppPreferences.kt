@@ -79,7 +79,7 @@ class AppPreferences(
         }
 
     override var deliveryReports: Boolean
-        get() = prefs.getBoolean(KEY_DELIVERY_REPORTS, true)
+        get() = prefs.getBoolean(KEY_DELIVERY_REPORTS, false)
         set(value) {
             prefs.edit().putBoolean(KEY_DELIVERY_REPORTS, value).apply()
         }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tab_new_title">New tab</string>
+    <string name="tab_edit_title">Edit tab</string>
+    <string name="tab_name_label">Tab name</string>
+    <string name="tab_show_only">Show only</string>
+    <string name="tab_filter_spam">Spam</string>
+    <string name="tab_filter_not_spam">Not spam</string>
+    <string name="tab_filter_contacts">Contacts</string>
+    <string name="tab_filter_unknown">Unknown</string>
+    <string name="tab_senders_selected">Senders (%1$d selected)</string>
+    <string name="tab_clear">Clear</string>
+    <string name="tab_search_senders">Search senders…</string>
+    <string name="tab_no_senders">No senders to show yet.</string>
+    <string name="tab_editor_hint_ok">The tab shows conversations that match the selected senders and filters.</string>
+    <string name="tab_editor_hint_need">Pick at least one sender or one filter.</string>
+    <string name="tab_cancel">Cancel</string>
+    <string name="tab_save">Save</string>
+    <string name="tab_row_edit">Edit tab</string>
+    <string name="tab_row_edit_desc">Name, senders and filters</string>
+    <string name="tab_row_senders">Senders and filters</string>
+    <string name="tab_row_senders_desc">Who appears in this tab</string>
+    <string name="tab_row_delete">Delete tab</string>
+</resources>
