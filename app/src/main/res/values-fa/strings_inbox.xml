@@ -30,6 +30,8 @@
     <string name="inbox_delete_confirm_title">%1$d گفتگو حذف شود؟</string>
     <string name="inbox_delete_confirm_body">آیا از حذف %1$d گفتگوی انتخاب‌شده و همهٔ پیام‌های آن مطمئن هستید؟ این کار قابل بازگشت نیست.</string>
     <string name="inbox_delete_conversation">حذف گفتگو</string>
+    <string name="inbox_delete_failed">حذف گفتگو انجام نشد. رمش را به‌عنوان برنامه پیام‌رسان پیش‌فرض تنظیم کنید و دوباره تلاش کنید.</string>
+    <string name="inbox_mark_read">علامت‌گذاری به عنوان خوانده‌شده</string>
     <string name="inbox_conversation_deleted">گفتگو حذف شد</string>
     <string name="inbox_undo">بازگردانی</string>
     <string name="inbox_empty_snippet">پیامی نیست</string>

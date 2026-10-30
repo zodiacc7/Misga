@@ -97,6 +97,7 @@ import com.ramesh.sms.ui.components.autoDeleteLimitForProgress
 import com.ramesh.sms.ui.components.progressForAutoDeleteLimit
 import com.ramesh.sms.ui.components.SettingsSwitchRow
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+import kotlin.math.roundToInt
 
 private val ToneDotColors: List<Pair<String, androidx.compose.ui.graphics.Color?>> =
     BubbleTone.values().map { tone ->
@@ -422,20 +423,21 @@ fun SettingsScreen(
                         onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
                         showDivider = true
                     )
+                    val delaySeconds = sendDelay.roundToInt().coerceIn(0, 9)
                     SettingsSliderRow(
                         title = stringResource(R.string.settings_send_delay),
                         subtitle = stringResource(R.string.settings_send_delay_sub),
                         value = sendDelay,
                         valueRange = 0f..9f,
                         steps = 8,
-                        valueLabel = if (sendDelay < 0.5f) {
+                        valueLabel = if (delaySeconds == 0) {
                             stringResource(R.string.settings_off)
                         } else {
-                            stringResource(R.string.settings_seconds_value, sendDelay.toInt())
+                            stringResource(R.string.settings_seconds_value, delaySeconds)
                         },
-                        onValueChange = { sendDelay = it },
+                        onValueChange = { sendDelay = it.roundToInt().toFloat() },
                         onValueChangeFinished = {
-                            inboxViewModel.setSendDelaySeconds(sendDelay.toInt().coerceIn(0, 9))
+                            inboxViewModel.setSendDelaySeconds(delaySeconds)
                         }
                     )
                     SettingsChoiceRow(

@@ -21,6 +21,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -105,10 +108,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
@@ -209,6 +214,13 @@ fun ConversationsScreen(
     }
     val swipeToDelete = AppearanceStore.current.swipeToDelete
     val undoScope = rememberCoroutineScope()
+
+    // A refused provider write used to look like "the swipe does nothing"; surface it instead.
+    LaunchedEffect(state.deleteFailureTick) {
+        if (state.deleteFailureTick > 0L) {
+            Toast.makeText(context, R.string.inbox_delete_failed, Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Deleting waits five seconds so the undo bar stays usable; nothing is lost if the user
     // changes their mind.
@@ -600,7 +612,8 @@ fun ConversationsScreen(
                             ) { thread ->
                                 SwipeToDeleteContainer(
                                     enabled = swipeToDelete,
-                                    onDelete = { requestDeleteConversation(thread) }
+                                    onDelete = { requestDeleteConversation(thread) },
+                                    onMarkRead = { viewModel.clearUnreadForThread(thread.threadId) }
                                 ) {
                                     ConversationItem(
                                         thread = thread,
@@ -1634,25 +1647,38 @@ private data class ProfileDialogData(
 )
 
 /**
- * Reveals a delete button when a conversation row is dragged sideways. The row itself never
- * deletes anything: the user has to tap the bin, which keeps the gesture reversible.
+ * Reveals an action button when a conversation row is dragged sideways: dragging towards one
+ * side offers "mark as read", dragging towards the other offers "delete". Nothing is applied
+ * until the button itself is tapped, so a mistimed gesture never destroys anything.
  */
 @Composable
 private fun SwipeToDeleteContainer(
     enabled: Boolean,
     onDelete: () -> Unit,
+    onMarkRead: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val revealPx = with(LocalDensity.current) { 84.dp.toPx() }
-    var offset by remember { mutableFloatStateOf(0f) }
+    val layoutDirection = LocalLayoutDirection.current
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    var targetOffset by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     val animatedOffset by animateFloat(
-        targetValue = offset,
-        animationSpec = tween(durationMillis = if (isDragging) 0 else 160),
+        targetValue = targetOffset,
+        animationSpec = tween(durationMillis = if (isDragging) 0 else 170),
         label = "swipeReveal"
     )
-    val revealed = animatedOffset != 0f
+    val revealed = abs(animatedOffset) > 1f
+    // Negative offset slides the row towards the physical left, so the exposed strip sits on the
+    // physical right. Alignment.End/Start are direction aware, therefore the mapping flips in RTL.
+    val showDelete = animatedOffset < 0f
+    val actionAlignment = when {
+        showDelete && isRtl -> Alignment.CenterStart
+        showDelete -> Alignment.CenterEnd
+        isRtl -> Alignment.CenterEnd
+        else -> Alignment.CenterStart
+    }
 
     Box(modifier.fillMaxWidth()) {
         if (revealed) {
@@ -1660,26 +1686,39 @@ private fun SwipeToDeleteContainer(
                 modifier = Modifier
                     .matchParentSize()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 12.dp),
-                contentAlignment = if (animatedOffset > 0) Alignment.CenterStart else Alignment.CenterEnd
+                    .padding(horizontal = 10.dp)
+                    .clickable { targetOffset = 0f },
+                contentAlignment = actionAlignment
             ) {
+                val container = if (showDelete) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
+                val onContainer = if (showDelete) {
+                    MaterialTheme.colorScheme.onErrorContainer
+                } else {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                }
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    color = container,
+                    contentColor = onContainer,
                     modifier = Modifier.size(52.dp)
                 ) {
                     IconButton(
                         onClick = {
-                            offset = 0f
-                            onDelete()
+                            targetOffset = 0f
+                            if (showDelete) onDelete() else onMarkRead()
                         },
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.inbox_delete_conversation),
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            imageVector = if (showDelete) Icons.Default.Delete else Icons.Default.MarkChatRead,
+                            contentDescription = stringResource(
+                                if (showDelete) R.string.inbox_delete_conversation else R.string.inbox_mark_read
+                            ),
+                            tint = onContainer,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1691,28 +1730,22 @@ private fun SwipeToDeleteContainer(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { translationX = animatedOffset }
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    detectHorizontalDragGestures(
-                        onDragStart = { isDragging = true },
-                        onDragEnd = {
-                            isDragging = false
-                            offset = when {
-                                abs(offset) < revealPx / 2f -> 0f
-                                offset > 0f -> revealPx
-                                else -> -revealPx
-                            }
-                        },
-                        onDragCancel = {
-                            isDragging = false
-                            offset = 0f
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            offset = (offset + dragAmount).coerceIn(-revealPx, revealPx)
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        targetOffset = (targetOffset + delta).coerceIn(-revealPx, revealPx)
+                    },
+                    enabled = enabled,
+                    orientation = Orientation.Horizontal,
+                    onDragStarted = { isDragging = true },
+                    onDragStopped = {
+                        isDragging = false
+                        targetOffset = when {
+                            abs(targetOffset) < revealPx / 2f -> 0f
+                            targetOffset > 0f -> revealPx
+                            else -> -revealPx
                         }
-                    )
-                }
+                    }
+                )
         ) {
             Box(
                 modifier = Modifier

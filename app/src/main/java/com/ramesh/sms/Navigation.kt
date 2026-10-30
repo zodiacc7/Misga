@@ -1,5 +1,11 @@
 package com.ramesh.sms
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -49,6 +55,24 @@ fun MainNavigation(
     NavDisplay(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
+        // Explicit specs for both directions: relying on the built-in default left the push and
+        // pop animations inconsistent (the screen changed instantly every other navigation).
+        transitionSpec = {
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> full } +
+                fadeIn(animationSpec = tween(PageTransitionMillis / 2)))
+                .togetherWith(
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> -full / 4 } +
+                        fadeOut(animationSpec = tween(PageTransitionMillis / 2))
+                )
+        },
+        popTransitionSpec = {
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> -full / 4 } +
+                fadeIn(animationSpec = tween(PageTransitionMillis / 2)))
+                .togetherWith(
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> full } +
+                        fadeOut(animationSpec = tween(PageTransitionMillis / 2))
+                )
+        },
         entryProvider = entryProvider {
             entry<ConversationsNav> {
                 ConversationsScreen(
@@ -103,3 +127,6 @@ fun MainNavigation(
         }
     )
 }
+
+/** Duration of the screen change animation, kept short so it never feels sluggish. */
+private const val PageTransitionMillis = 240

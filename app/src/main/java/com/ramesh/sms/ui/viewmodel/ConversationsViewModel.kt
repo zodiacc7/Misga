@@ -64,7 +64,9 @@ data class ConversationsUiState(
     /** Position of the "All" pseudo tab inside the tab strip. */
     val allTabIndex: Int = 0,
     /** Conversations waiting out the undo window before they are really deleted. */
-    val pendingDeleteIds: Set<Long> = emptySet()
+    val pendingDeleteIds: Set<Long> = emptySet(),
+    /** Changes whenever a delete request came back from the provider empty handed. */
+    val deleteFailureTick: Long = 0L
 )
 
 /** Id used for the "All" pseudo tab while reordering the tab strip (matches ALL_TAB_ID). */
@@ -88,6 +90,9 @@ class ConversationsViewModel(
     private var defaultSmsCheckJob: Job? = null
     private var observerDebounceJob: Job? = null
     private var lastLoadFinishedAt = 0L
+
+    /** True once the tab strip has been read, so the launch default is applied only once. */
+    private var initialTabApplied = false
     private var smsContentObserver: ContentObserver? = null
 
     private val _uiState = MutableStateFlow(
@@ -657,11 +662,17 @@ class ConversationsViewModel(
         viewModelScope.launch {
             val tabs = repository.getAllTabs()
             val current = _uiState.value
-            val validSelectedTabId = if (current.selectedTabId != null && tabs.any { it.id == current.selectedTabId }) {
-                current.selectedTabId
-            } else {
-                null
+            val storedSelection = current.selectedTabId
+            val storedStillExists = storedSelection != null && tabs.any { it.id == storedSelection }
+            val validSelectedTabId = when {
+                storedStillExists -> storedSelection
+                // On the very first load the app opens on the first real tab instead of the All
+                // pseudo tab, no matter where All currently sits in the strip.
+                !initialTabApplied -> tabs.firstOrNull()?.id
+                storedSelection == null -> null
+                else -> tabs.firstOrNull()?.id
             }
+            initialTabApplied = true
             _uiState.value = current.copy(
                 tabs = tabs,
                 selectedTabId = validSelectedTabId,
@@ -809,7 +820,13 @@ class ConversationsViewModel(
             selectedThreadIds.remove(threadId)
             if (selectedThreadIds.isEmpty()) isSelectionMode = false
             val deleted = repository.deleteThread(threadId)
-            if (deleted) loadThreads(silent = true, force = true)
+            if (deleted) {
+                loadThreads(silent = true, force = true)
+            } else {
+                // The provider refuses writes when Ramesh is not the default SMS app; tell the UI
+                // instead of silently putting the conversation back.
+                _uiState.value = _uiState.value.copy(deleteFailureTick = System.currentTimeMillis())
+            }
         }
     }
 

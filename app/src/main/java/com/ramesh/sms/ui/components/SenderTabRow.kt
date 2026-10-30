@@ -124,7 +124,19 @@ fun SenderTabRow(
                 targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 label = "tabText_${tab.id}"
             )
-            val count = if (isAll) threads.size else threads.count { isThreadInTab(it, tab) }
+            // The badge means one thing only: unread messages first. When a tab has nothing
+            // unread it falls back to the muted conversation count, so the two can never be
+            // confused with each other.
+            val tabThreads = if (isAll) threads else threads.filter { isThreadInTab(it, tab) }
+            val unreadCount = tabThreads.sumOf { it.unreadCount }
+            val hasUnread = unreadCount > 0
+            val count = if (hasUnread) unreadCount else tabThreads.size
+            val badgeColor = when {
+                hasUnread -> MaterialTheme.colorScheme.error
+                isSelected -> contentColor.copy(alpha = 0.22f)
+                else -> MaterialTheme.colorScheme.surfaceContainerHighest
+            }
+            val badgeTextColor = if (hasUnread) MaterialTheme.colorScheme.onError else contentColor
 
             Surface(
                 shape = PillShape,
@@ -258,13 +270,13 @@ fun SenderTabRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         shape = PillShape,
-                        color = if (isSelected) contentColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest
+                        color = badgeColor
                     ) {
                         Text(
                             text = count.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = contentColor,
+                            color = badgeTextColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                             fontSize = 11.sp
                         )

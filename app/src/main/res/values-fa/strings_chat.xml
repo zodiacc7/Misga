@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="chat_cancel_selection">لغو انتخاب</string>
+    <string name="chat_selected_count">%1$d انتخاب شده</string>
     <string name="chat_react">واکنش به پیام</string>
     <string name="chat_message_info">اطلاعات پیام</string>
     <string name="chat_delete_selected">حذف انتخاب‌شده‌ها</string>

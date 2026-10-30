@@ -1,0 +1,7 @@
+• Fix: the screen change animation now plays on every navigation, not every other one.
+• Swipe a conversation right to mark it read, left to reveal delete; the row no longer jumps back silently.
+• A failed delete now explains that Ramesh must be the default SMS app.
+• The app opens on the first tab instead of "All".
+• Send-delay slider shows the exact number of seconds (0–9).
+• Quick emoji reactions sit right in the message selection bar.
+• Tab badge: red number = unread messages, grey number = conversation count.
