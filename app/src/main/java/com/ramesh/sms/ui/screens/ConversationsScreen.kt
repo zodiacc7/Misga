@@ -117,6 +117,7 @@ import com.ramesh.sms.ui.components.RenameTabDialog
 import com.ramesh.sms.ui.components.SenderTabRow
 import com.ramesh.sms.ui.components.SimBadge
 import com.ramesh.sms.ui.components.SimFilterRow
+import com.ramesh.sms.ui.components.TabFilterDialog
 import com.ramesh.sms.ui.components.TabOptionsMenuSheet
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.senderDisplayName
@@ -172,6 +173,7 @@ fun ConversationsScreen(
     var tabToDelete by remember { mutableStateOf<SenderTab?>(null) }
     var tabToManageSenders by remember { mutableStateOf<SenderTab?>(null) }
     var tabForOptionsMenu by remember { mutableStateOf<SenderTab?>(null) }
+    var tabToEditFilters by remember { mutableStateOf<SenderTab?>(null) }
     var showAddToTabDialog by remember { mutableStateOf(false) }
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
@@ -721,6 +723,15 @@ fun ConversationsScreen(
     }
 
     tabForOptionsMenu?.let { tab ->
+        tabToEditFilters?.let { filterTab ->
+            val liveTab = state.tabs.find { it.id == filterTab.id } ?: filterTab
+            TabFilterDialog(
+                tab = liveTab,
+                onToggle = { mask, enabled -> viewModel.setTabFilterFlag(liveTab.id, mask, enabled) },
+                onDismiss = { tabToEditFilters = null }
+            )
+        }
+
         TabOptionsMenuSheet(
             tab = tab,
             onDismiss = { tabForOptionsMenu = null },
@@ -730,6 +741,10 @@ fun ConversationsScreen(
             },
             onRename = {
                 tabToRename = tab
+                tabForOptionsMenu = null
+            },
+            onEditFilters = {
+                tabToEditFilters = tab
                 tabForOptionsMenu = null
             },
             onDelete = {

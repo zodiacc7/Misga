@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -223,6 +224,7 @@ fun TabOptionsMenuSheet(
     onDismiss: () -> Unit,
     onManageSenders: () -> Unit,
     onRename: () -> Unit,
+    onEditFilters: () -> Unit,
     onDelete: () -> Unit
 ) {
     ModalBottomSheet(
@@ -277,6 +279,44 @@ fun TabOptionsMenuSheet(
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = FontWeight.Medium
                         )
+                    }
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable {
+                                onDismiss()
+                                onEditFilters()
+                            }
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FilterAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(14.dp))
+                        Column {
+                            Text(
+                                text = "Show only...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (tab.hasContentFilter) filterSummary(tab) else "Spam, non-spam, contacts or unknown senders",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
                     }
 
                     HorizontalDivider(
@@ -347,6 +387,86 @@ fun TabOptionsMenuSheet(
             Spacer(modifier = Modifier.height(28.dp))
         }
     }
+}
+
+/** Human readable summary of a tab's content mask, e.g. "Spam + contacts". */
+fun filterSummary(tab: SenderTab): String {
+    val parts = mutableListOf<String>()
+    val wantsSpam = tab.spamOnly && !tab.nonSpamOnly
+    val wantsNonSpam = tab.nonSpamOnly && !tab.spamOnly
+    val wantsContacts = tab.contactsOnly && !tab.nonContactsOnly
+    val wantsNonContacts = tab.nonContactsOnly && !tab.contactsOnly
+    if (wantsSpam) parts.add("Spam")
+    if (wantsNonSpam) parts.add("Not spam")
+    if (wantsContacts) parts.add("Contacts")
+    if (wantsNonContacts) parts.add("Unknown senders")
+    return if (parts.isEmpty()) "All conversations" else parts.joinToString(" + ")
+}
+
+/** Lets a tab show only spam / non-spam / contacts / unknown senders, or any combination. */
+@Composable
+fun TabFilterDialog(
+    tab: SenderTab,
+    onToggle: (Int, Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(
+        Triple(SenderTab.MASK_SPAM_ONLY, "Only spam", "Conversations whose last message was filtered as spam"),
+        Triple(SenderTab.MASK_NON_SPAM_ONLY, "Only non-spam", "Skip conversations marked as spam"),
+        Triple(SenderTab.MASK_CONTACTS_ONLY, "Only contacts", "Saved contacts only"),
+        Triple(SenderTab.MASK_NON_CONTACTS_ONLY, "Only unknown senders", "Hide saved contacts")
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = SquircleCardShape,
+        title = {
+            Column {
+                Text(
+                    text = "Filter “${tab.name}”",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = filterSummary(tab),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        },
+        text = {
+            Column {
+                options.forEach { (mask, title, subtitle) ->
+                    val checked = tab.filterMask and mask != 0
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .clickable { onToggle(mask, !checked) }
+                            .padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = checked, onCheckedChange = { onToggle(mask, it) })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = title,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Done", fontWeight = FontWeight.Bold) }
+        }
+    )
 }
 
 @Composable
