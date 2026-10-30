@@ -1,1 +1,1 @@
-Smart SMS app with regex filters to eliminate spam in Iran
+Spam-free SMS for Iran with Textra-style themes

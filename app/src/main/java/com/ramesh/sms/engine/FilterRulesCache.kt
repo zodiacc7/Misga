@@ -1,0 +1,91 @@
+package com.ramesh.sms.engine
+
+import com.ramesh.sms.data.db.RameshDatabaseHelper
+import com.ramesh.sms.data.model.SenderPreference
+import com.ramesh.sms.data.util.PhoneNumberKeys
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.IdentityHashMap
+
+class FilterRulesCache private constructor(private val dbHelper: RameshDatabaseHelper) {
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mutex = Mutex()
+
+    @Volatile
+    private var collectorsStarted = false
+
+    @Volatile
+    private var rulesDirty = true
+
+    @Volatile
+    private var prefsDirty = true
+
+    private var cachedPrepared: PreparedFilterRules? = null
+    private var cachedPrefs: Map<String, SenderPreference>? = null
+
+    private fun ensureCollectorsStarted() {
+        if (collectorsStarted) return
+        synchronized(this) {
+            if (collectorsStarted) return
+            collectorsStarted = true
+            scope.launch {
+                dbHelper.rulesChanged.collect { rulesDirty = true }
+            }
+            scope.launch {
+                dbHelper.prefsChanged.collect { prefsDirty = true }
+            }
+        }
+    }
+
+    suspend fun preparedRules(): PreparedFilterRules {
+        ensureCollectorsStarted()
+        return mutex.withLock {
+            var cached = cachedPrepared
+            if (cached != null && !rulesDirty) return@withLock cached
+            do {
+                rulesDirty = false
+                cached = SmsFilterEngine.prepareRules(dbHelper.getAllRules())
+                cachedPrepared = cached
+            } while (rulesDirty)
+            cached!!
+        }
+    }
+
+    suspend fun senderPreferences(): Map<String, SenderPreference> {
+        ensureCollectorsStarted()
+        return mutex.withLock {
+            var cached = cachedPrefs
+            if (cached != null && !prefsDirty) return@withLock cached
+            do {
+                prefsDirty = false
+                cached = dbHelper.getAllSenderPreferences()
+                cachedPrefs = cached
+            } while (prefsDirty)
+            cached!!
+        }
+    }
+
+    suspend fun senderPreference(address: String): SenderPreference? {
+        val prefs = senderPreferences()
+        prefs[PhoneNumberKeys.canonical(address)]?.let { return it }
+        for (key in PhoneNumberKeys.keys(address)) {
+            prefs[key]?.let { return it }
+        }
+        return null
+    }
+
+    companion object {
+        private val caches = IdentityHashMap<RameshDatabaseHelper, FilterRulesCache>()
+
+        fun getInstance(dbHelper: RameshDatabaseHelper): FilterRulesCache {
+            synchronized(caches) {
+                return caches.getOrPut(dbHelper) { FilterRulesCache(dbHelper) }
+            }
+        }
+    }
+}

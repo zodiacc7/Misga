@@ -62,12 +62,12 @@ jobs:
             echo "::error::SIGNING_KEYSTORE secret is missing"
             exit 1
           fi
-          echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/misga-release.jks"
-          test -s "$RUNNER_TEMP/misga-release.jks"
+          echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/ramesh-release.jks"
+          test -s "$RUNNER_TEMP/ramesh-release.jks"
 
       - name: Build signed release APK
         env:
-          SIGNING_STORE_FILE: ${{ runner.temp }}/misga-release.jks
+          SIGNING_STORE_FILE: ${{ runner.temp }}/ramesh-release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -90,7 +90,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/misga-${TAG}-universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/ramesh-${TAG}-universal.apk"
           sha256sum dist/*.apk | tee dist/SHA256SUMS
 
       - name: Publish GitHub Pre-release
@@ -103,5 +103,5 @@ jobs:
             --generate-notes \
             --prerelease \
             --latest=false \
-            "dist/misga-${TAG}-universal.apk" \
+            "dist/ramesh-${TAG}-universal.apk" \
             dist/SHA256SUMS

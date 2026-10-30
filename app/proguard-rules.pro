@@ -1,4 +1,4 @@
-# R8 rules for Misga (release minification enabled).
+# R8 rules for Ramesh (release minification enabled).
 
 # --- kotlinx.serialization ---
 # Official rules: https://github.com/Kotlin/kotlinx.serialization#android
@@ -13,10 +13,10 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
--keep,includedescriptorclasses class com.miss.ga.**$$serializer { *; }
--keepclassmembers class com.miss.ga.** {
+-keep,includedescriptorclasses class com.ramesh.sms.**$$serializer { *; }
+-keepclassmembers class com.ramesh.sms.** {
     *** Companion;
 }
--keepclasseswithmembers class com.miss.ga.** {
+-keepclasseswithmembers class com.ramesh.sms.** {
     kotlinx.serialization.KSerializer serializer(...);
 }

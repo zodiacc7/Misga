@@ -1,3 +1,4 @@
+• The app is now رامش (Ramesh), with its own package id com.ramesh.sms: it installs alongside Misga with fresh settings
 • New Textra-style Settings screen: theme mode (Auto/Light/Dark/AMOLED Black) and nine accent colors
 • Bubble styles with a tail, separate sent/received bubble colors, message text size and font
 • Chat background tones and support for your own wallpaper photo

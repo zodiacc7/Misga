@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.miss.ga"
+    namespace = "com.ramesh.sms"
     compileSdk = 36
 
     val releaseStoreFile = System.getenv("SIGNING_STORE_FILE")
 
     defaultConfig {
-        applicationId = "com.miss.ga"
+        applicationId = "com.ramesh.sms"
         minSdk = 26
         targetSdk = 36
         versionCode = 22
