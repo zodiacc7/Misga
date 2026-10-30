@@ -27,6 +27,20 @@ Misga is built to fix this. By default it ships with predefined regex filters th
 - **A builtin filter list, fully yours.** The app already includes presets for Iranian spam, ads, and scams. You can keep them, disable them, or delete everything and build your own list from scratch.
 - **Add any filter you want.** Open Filter Studio and add a regex (or plain-text) rule. If you are not comfortable writing regex, ask your AI agent to create a pattern that blocks a specific kind of spam, then paste it into the app.
 - **Material 3 Expressive.** The UI follows Google's latest Material Design 3 patterns.
+- **Textra-style look & feel.** Theme modes (auto/light/dark/AMOLED black), nine accent colours, Textra bubbles with a tail, separate sent/received bubble colours, message font and size, a flat or photo chat background, contact photos and Today/Yesterday dividers.
+
+## Appearance & settings
+
+Open the ⋮ menu in the inbox and choose **Settings** (or tap the banner at the top of *Customize inbox*). Everything updates live:
+
+- **Theme** — Auto, Light, Dark or Black (true black for AMOLED), plus System dynamic colour or nine hand-tuned accents.
+- **Bubbles** — Textra, Rounded, Pill or Compact shapes; bubble tail on/off; independent colours for sent and received bubbles; four message text sizes; Vazirmatn, Plus Jakarta or the system font.
+- **Chat background** — six flat tones or any photo from your gallery (decoded and downsampled so large images stay memory-safe).
+- **Conversation** — contact photos next to received messages, Today/Yesterday date dividers, Enter-to-send, SMS character counter and the tap-to-switch Shamsi date option.
+- **Inbox** — conversation tabs, SIM filter, contact photos and contacts-only mode.
+- **Notifications** — delete action, and a one-tap **Copy code** button when an incoming SMS contains a login/verification code.
+- **Filtering** — no-spam-for-contacts plus a shortcut to Filter Studio.
+- **Reset** — restore the default look without touching your messages or filters.
 
 ## How filtering works
 
@@ -97,6 +111,20 @@ The debug APK is written to `app/build/outputs/apk/debug/`.
 - **لیست فیلتر داخلی که مال خودتان است.** برنامه از قبل پیش‌فرض‌هایی برای اسپم، تبلیغات و کلاهبرداری‌های رایج ایران دارد. می‌توانید آن‌ها را نگه دارید، خاموش کنید، یا همه را پاک کنید و لیست خودتان را از صفر بسازید.
 - **هر فیلتری که بخواهید اضافه کنید.** Filter Studio را باز کنید و یک قانون regex (یا متن ساده) بسازید. اگر نوشتن regex برایتان راحت نیست، از ایجنت هوش مصنوعی بخواهید الگویی برای مسدود کردن نوع خاصی از اسپم بسازد و آن را در برنامه اضافه کنید.
 - **Material 3 Expressive.** رابط کاربری از آخرین الگوهای طراحی Material Design 3 گوگل پیروی می‌کند.
+- **ظاهر و تنظیمات شبیه Textra.** حالت‌های تم (خودکار/روشن/تیره/مشکی AMOLED)، نُه رنگ تأکیدی، حباب‌های Textra با دنباله، رنگ جداگانه برای حباب ارسالی و دریافتی، فونت و اندازهٔ متن، پس‌زمینهٔ ساده یا عکس، عکس مخاطب و جداکنندهٔ امروز/دیروز.
+
+## ظاهر و تنظیمات
+
+از منوی ⋮ در صندوق ورودی گزینهٔ **Settings** را بزنید (یا از بالای پنجرهٔ *Customize inbox*). همهٔ تغییرها همان لحظه اعمال می‌شوند:
+
+- **تم** — خودکار، روشن، تیره یا مشکی (مشکی واقعی برای AMOLED)، به‌همراه رنگ سیستم یا نُه رنگ دست‌چین‌شده.
+- **حباب‌ها** — شکل Textra، گرد، قرصی یا جمع‌وجور؛ دنبالهٔ حباب روشن/خاموش؛ رنگ مستقل برای حباب ارسالی و دریافتی؛ چهار اندازهٔ متن؛ فونت Vazirmatn، Plus Jakarta یا فونت سیستم.
+- **پس‌زمینهٔ گفتگو** — شش رنگ ساده یا هر عکسی از گالری (با کاهش اندازه تا حافظه پر نشود).
+- **گفتگو** — عکس مخاطب کنار پیام‌های دریافتی، جداکنندهٔ امروز/دیروز، ارسال با کلید Enter، شمارندهٔ کاراکتر پیامک و گزینهٔ لمس تاریخ برای تقویم شمسی.
+- **صندوق ورودی** — تب‌های گفتگو، فیلتر سیم‌کارت، عکس مخاطب و حالت «فقط مخاطبین».
+- **اعلان‌ها** — دکمهٔ حذف، و دکمهٔ **کپی کد** وقتی پیامک ورودی شامل کد ورود/تأیید است.
+- **فیلتر** — «بدون اسپم برای مخاطبین» و میان‌بر Filter Studio.
+- **بازنشانی** — برگشت به ظاهر پیش‌فرض بدون دست‌زدن به پیام‌ها و فیلترها.
 
 ## فیلتر چطور کار می‌کند
 
