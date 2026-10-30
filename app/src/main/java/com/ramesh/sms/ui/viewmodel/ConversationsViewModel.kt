@@ -510,6 +510,11 @@ class ConversationsViewModel(
         _uiState.value = _uiState.value.copy(autoDeleteLimit = limit)
     }
 
+    fun setAppLanguage(language: AppLanguage) {
+        userPreferences.appLanguage = language
+        _uiState.value = _uiState.value.copy(appLanguage = language)
+    }
+
     fun setLockScreenPrivacy(privacy: LockScreenPrivacy) {
         userPreferences.lockScreenPrivacy = privacy
         _uiState.value = _uiState.value.copy(lockScreenPrivacy = privacy)

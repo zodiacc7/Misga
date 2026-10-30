@@ -52,20 +52,24 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Decode signing keystore
+      # Preferred: keystore provided as a secret. Fallback: the checked-in
+      # keystore/keystore.properties, so a fresh clone can still publish a signed build.
+      - name: Prepare signing keystore
         env:
           SIGNING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE }}
         run: |
-          if [[ -z "$SIGNING_KEYSTORE" ]]; then
-            echo "::error::SIGNING_KEYSTORE secret is missing"
-            exit 1
+          if [[ -n "$SIGNING_KEYSTORE" ]]; then
+            echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/ramesh-release.p12"
+            test -s "$RUNNER_TEMP/ramesh-release.p12"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/ramesh-release.p12" >> "$GITHUB_ENV"
+            echo "SIGNING_STORE_TYPE=PKCS12" >> "$GITHUB_ENV"
+          else
+            echo "::warning::SIGNING_KEYSTORE secret is not set; using keystore/keystore.properties"
+            test -f keystore/ramesh-release.p12
           fi
-          echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/ramesh-release.jks"
-          test -s "$RUNNER_TEMP/ramesh-release.jks"
 
       - name: Build signed release APK
         env:
-          SIGNING_STORE_FILE: ${{ runner.temp }}/ramesh-release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
