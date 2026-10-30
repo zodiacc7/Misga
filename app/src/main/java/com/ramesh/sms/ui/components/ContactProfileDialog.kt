@@ -33,8 +33,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.ramesh.sms.R
 import com.ramesh.sms.ui.util.ContactUtils
 import com.ramesh.sms.ui.util.senderDisplayName
 
@@ -116,7 +118,7 @@ fun ContactProfileDialog(
                     // Call Button
                     DialogActionButton(
                         icon = Icons.Default.Call,
-                        label = "Call",
+                        label = stringResource(R.string.comp_call),
                         enabled = isCallable,
                         onClick = {
                             ContactUtils.openDialer(context, address)
@@ -128,7 +130,7 @@ fun ContactProfileDialog(
                     if (!isContact) {
                         DialogActionButton(
                             icon = Icons.Outlined.PersonAdd,
-                            label = "Add contact",
+                            label = stringResource(R.string.comp_add_contact),
                             onClick = {
                                 ContactUtils.openAddToContacts(context, address, displayName)
                                 onDismiss()
@@ -139,7 +141,7 @@ fun ContactProfileDialog(
                     // Info Button (open contact information if contact, or participant/conversation info)
                     DialogActionButton(
                         icon = Icons.Outlined.Info,
-                        label = "Info",
+                        label = stringResource(R.string.comp_info),
                         onClick = {
                             val opened = ContactUtils.openContactInfo(context, address, contactLookupUri)
                             if (!opened && onOpenInfo != null) {

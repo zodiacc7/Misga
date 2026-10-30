@@ -86,7 +86,7 @@ fun DefaultSmsBanner(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Security,
-                        contentDescription = "Security Shield",
+                        contentDescription = stringResource(R.string.comp_security_shield),
                         tint = Color.White,
                         modifier = Modifier.size(22.dp)
                     )
@@ -102,7 +102,7 @@ fun DefaultSmsBanner(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Spam Defense & Regex Interceptor",
+                        text = stringResource(R.string.comp_banner_badge),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.SemiBold
@@ -113,7 +113,7 @@ fun DefaultSmsBanner(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Set Ramesh as your default SMS app to intercept Persian telecom spam, phishing messages, and silence intrusive advertiser blasts in real time.",
+                text = stringResource(R.string.comp_banner_body),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
@@ -135,7 +135,7 @@ fun DefaultSmsBanner(
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
                 ) {
                     Text(
-                        text = "Set Default SMS",
+                        text = stringResource(R.string.comp_banner_cta),
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.labelLarge
                     )

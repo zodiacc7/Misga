@@ -616,13 +616,13 @@ fun ChatScreen(
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "No messages yet",
+                            text = stringResource(R.string.chat_no_messages_yet),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Send an SMS to start the conversation",
+                            text = stringResource(R.string.chat_send_to_start),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -749,7 +749,7 @@ fun ChatScreen(
             shape = SquircleCardShape,
             title = {
                 Text(
-                    text = "Message Options",
+                    text = stringResource(R.string.chat_message_options),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -895,14 +895,14 @@ fun ChatScreen(
             shape = SquircleCardShape,
             title = {
                 Text(
-                    text = "Delete Messages?",
+                    text = stringResource(R.string.chat_delete_messages_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "Are you sure you want to delete $count selected message${if (count > 1) "s" else ""}? This action cannot be undone.",
+                    text = stringResource(R.string.chat_delete_messages_body, count),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1173,7 +1173,7 @@ private fun ReactionPickerDialog(
         shape = MaterialTheme.shapes.extraLarge,
         title = {
             Text(
-                text = "React",
+                text = stringResource(R.string.chat_react_action),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )

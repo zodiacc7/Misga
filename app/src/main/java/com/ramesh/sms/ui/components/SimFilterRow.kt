@@ -18,8 +18,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.SimInfo
 import com.ramesh.sms.theme.PillShape
@@ -58,7 +60,7 @@ fun SimFilterRow(
             onClick = { onSelectSubId(null) },
             label = {
                 Text(
-                    text = "All SIMs",
+                    text = stringResource(R.string.comp_all_sims),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Medium
                 )
@@ -75,10 +77,11 @@ fun SimFilterRow(
             val isSelected = selectedSubId == sim.subscriptionId
             val count = simCounts[sim.subscriptionId] ?: 0
             val chipLabel = when {
-                sim.carrierName.isNotBlank() -> "SIM ${sim.slotNumber} (${sim.carrierName})"
+                sim.carrierName.isNotBlank() ->
+                    stringResource(R.string.comp_sim_carrier, sim.slotNumber, sim.carrierName)
                 sim.displayName.isNotBlank() && !sim.displayName.startsWith("SIM", ignoreCase = true) ->
-                    "SIM ${sim.slotNumber} (${sim.displayName})"
-                else -> "SIM ${sim.slotNumber}"
+                    stringResource(R.string.comp_sim_carrier, sim.slotNumber, sim.displayName)
+                else -> stringResource(R.string.comp_sim_label, sim.slotNumber)
             }
 
             FilterChip(

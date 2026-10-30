@@ -38,8 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ramesh.sms.R
 import com.ramesh.sms.theme.SquircleMediumShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,13 +91,13 @@ fun CustomizationSheet(
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = "Customize",
+                        text = stringResource(R.string.comp_customize_title),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Personalize your messaging experience",
+                        text = stringResource(R.string.comp_customize_sub),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -137,7 +139,7 @@ fun CustomizationSheet(
                     Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Theme, bubbles & background",
+                            text = stringResource(R.string.comp_appearance_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -145,7 +147,7 @@ fun CustomizationSheet(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Accent color, bubble style, chat wallpaper, fonts and more",
+                            text = stringResource(R.string.comp_appearance_sub),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
@@ -195,7 +197,7 @@ fun CustomizationSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Conversation tabs",
+                                text = stringResource(R.string.comp_tabs_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -203,7 +205,7 @@ fun CustomizationSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Show custom tabs above the inbox for grouping contacts and organizing messages",
+                                text = stringResource(R.string.comp_tabs_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -250,7 +252,7 @@ fun CustomizationSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "SIM card filter",
+                                text = stringResource(R.string.comp_sim_filter_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -258,7 +260,7 @@ fun CustomizationSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Show SIM card tabs above the inbox to filter conversations by SIM on multi-SIM devices",
+                                text = stringResource(R.string.comp_sim_filter_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -305,7 +307,7 @@ fun CustomizationSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "No spam for contacts",
+                                text = stringResource(R.string.comp_no_spam_contacts_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -313,7 +315,7 @@ fun CustomizationSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "SMS messages from people in contacts will not be marked as spam even if they send a blacklist message",
+                                text = stringResource(R.string.comp_no_spam_contacts_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -360,7 +362,7 @@ fun CustomizationSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Tap date to switch calendar",
+                                text = stringResource(R.string.comp_date_tap_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -368,7 +370,7 @@ fun CustomizationSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Tap message timestamps in chat bubbles to toggle between standard and Shamsi dates",
+                                text = stringResource(R.string.comp_date_tap_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -415,7 +417,7 @@ fun CustomizationSheet(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Delete in notifications",
+                                text = stringResource(R.string.comp_notif_delete_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -423,7 +425,7 @@ fun CustomizationSheet(
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Show a Delete button next to Reply and Mark as read to quickly delete incoming messages",
+                                text = stringResource(R.string.comp_notif_delete_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

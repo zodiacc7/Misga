@@ -1308,7 +1308,7 @@ private fun ConversationItem(
                             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         ) {
                             Text(
-                                text = "Spam",
+                                text = stringResource(R.string.comp_spam),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
                                 fontWeight = FontWeight.Bold,
@@ -1463,7 +1463,7 @@ private fun SearchMessageResultItem(
                         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Text(
-                            text = "Spam",
+                            text = stringResource(R.string.comp_spam),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                             fontWeight = FontWeight.Bold,

@@ -43,9 +43,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.data.util.PhoneNumberKeys
@@ -125,7 +127,7 @@ fun SenderTabRow(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "All",
+                        text = stringResource(R.string.comp_all),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
@@ -320,7 +322,7 @@ fun SenderTabRow(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
-                                contentDescription = "Tab options",
+                                contentDescription = stringResource(R.string.comp_tab_options),
                                 tint = contentColor,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -346,13 +348,13 @@ fun SenderTabRow(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "New Tab",
+                        contentDescription = stringResource(R.string.comp_new_tab),
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "New Tab",
+                        text = stringResource(R.string.comp_new_tab),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary

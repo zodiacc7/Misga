@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="comp_customize_title">شخصی‌سازی</string>
+    <string name="comp_customize_sub">تجربهٔ پیام‌رسانی خود را شخصی کنید</string>
+    <string name="comp_appearance_title">پوسته، حباب‌ها و پس‌زمینه</string>
+    <string name="comp_appearance_sub">رنگ تأکید، سبک حباب، تصویر پس‌زمینهٔ گفتگو، فونت و بیشتر</string>
+    <string name="comp_tabs_title">تب‌های گفتگو</string>
+    <string name="comp_tabs_sub">تب‌های سفارشی بالای صندوق ورودی را برای گروه‌بندی مخاطبین و سازمان‌دهی پیام‌ها نشان بده</string>
+    <string name="comp_sim_filter_title">فیلتر سیم‌کارت</string>
+    <string name="comp_sim_filter_sub">تب‌های سیم‌کارت را بالای صندوق ورودی نشان بده تا در دستگاه‌های چندسیم‌کارته گفتگوها بر اساس سیم فیلتر شوند</string>
+    <string name="comp_no_spam_contacts_title">بدون اسپم برای مخاطبین</string>
+    <string name="comp_no_spam_contacts_sub">پیام‌های افراد موجود در مخاطبین حتی با محتوای فهرست مسدود، اسپم شمرده نمی‌شوند</string>
+    <string name="comp_date_tap_title">تغییر تقویم با لمس تاریخ</string>
+    <string name="comp_date_tap_sub">با لمس زمان پیام‌ها در حباب‌های گفتگو، بین تاریخ شمسی و میلادی جابه‌جا شوید</string>
+    <string name="comp_notif_delete_title">حذف در اعلان‌ها</string>
+    <string name="comp_notif_delete_sub">دکمهٔ حذف را کنار پاسخ و خوانده‌شده نمایش بده تا پیام‌های دریافتی سریع حذف شوند</string>
+    <string name="comp_banner_badge">دفاع در برابر اسپم و رهگیر عبارت منظم</string>
+    <string name="comp_banner_body">رامش را به‌عنوان برنامهٔ پیامک پیش‌فرض تنظیم کنید تا اسپم اپراتورها، پیام‌های فیشینگ و تبلیغات مزاحم را در لحظه رهگیری و ساکت کند.</string>
+    <string name="comp_banner_cta">تنظیم به‌عنوان پیامک پیش‌فرض</string>
+    <string name="comp_security_shield">سپر امنیتی</string>
+    <string name="comp_all">همه</string>
+    <string name="comp_all_sims">همهٔ سیم‌کارت‌ها</string>
+    <string name="comp_sim_label">سیم %1$d</string>
+    <string name="comp_sim_carrier">سیم %1$d (%2$s)</string>
+    <string name="comp_switch_sim">تغییر سیم‌کارت</string>
+    <string name="comp_selected">انتخاب‌شده</string>
+    <string name="comp_spam_filtered">اسپم فیلتر شد</string>
+    <string name="comp_spam_message_filtered">پیام اسپم فیلتر شد</string>
+    <string name="comp_rule_label">قاعده: %1$s</string>
+    <string name="comp_not_spam">اسپم نیست</string>
+    <string name="comp_add_contact">افزودن مخاطب</string>
+    <string name="comp_segment_counter">%1$d/%2$d • %3$d پیامک (%4$s)</string>
+    <string name="comp_unicode">فارسی/یونیکد</string>
+    <string name="comp_gsm7">GSM-7</string>
+    <string name="comp_tab_options">گزینه‌های تب</string>
+    <string name="comp_new_tab">تب جدید</string>
+    <string name="comp_call">تماس</string>
+    <string name="comp_info">اطلاعات</string>
+    <string name="comp_delete">حذف</string>
+    <string name="comp_spam">اسپم</string>
+    <string name="chat_no_messages_yet">هنوز پیامی نیست</string>
+    <string name="chat_send_to_start">برای شروع گفتگو یک پیامک بفرستید</string>
+    <string name="chat_message_options">گزینه‌های پیام</string>
+    <string name="chat_delete_messages_title">پیام‌ها حذف شوند؟</string>
+    <string name="chat_delete_messages_body">آیا از حذف %1$d پیام انتخاب‌شده مطمئن هستید؟ این کار قابل بازگشت نیست.</string>
+    <string name="chat_react_action">واکنش</string>
+</resources>
