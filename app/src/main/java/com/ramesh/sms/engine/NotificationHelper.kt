@@ -411,6 +411,9 @@ class NotificationHelper private constructor(
 
         private const val TAG = "NotificationHelper"
 
+        /** Fixed id so repeated test notifications replace each other. */
+        private const val TEST_NOTIFICATION_ID = 0x7E57
+
         @Volatile
         private var INSTANCE: NotificationHelper? = null
 
