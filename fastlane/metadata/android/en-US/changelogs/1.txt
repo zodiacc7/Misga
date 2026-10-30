@@ -1,0 +1,7 @@
+• First release of Ramesh (رامش) under its own package id, com.ramesh.sms
+• Spam filtering with allowlist priority, Iranian presets and Filter Studio
+• Textra-style appearance: themes, bubbles, fonts, chat backgrounds and settings
+• Delivery report switch, send delay with cancel, per-conversation auto-delete
+• Lock-screen privacy: choose whether the sender and the text are visible
+• Emoji reactions on messages and combinable tab filters
+• English and Persian UI that follows the system language by default

@@ -1,2 +1,0 @@
-• Persistent contacts-only conversations filter
-• Stability and performance improvements

@@ -11,6 +11,21 @@ interface UserPreferences {
     var showTabs: Boolean
     var showSimFilter: Boolean
     var noSpamForContacts: Boolean
+
+    /** Ask the network for a delivery report for every outgoing message. */
+    var deliveryReports: Boolean
+
+    /** Seconds to wait before actually dispatching an outgoing message (0 = send now). */
+    var sendDelaySeconds: Int
+
+    /** Keep at most this many messages per conversation (0 = unlimited). */
+    var autoDeleteLimit: Int
+
+    /** How much of a message may appear on the lock screen. */
+    var lockScreenPrivacy: LockScreenPrivacy
+
+    /** UI language; [AppLanguage.SYSTEM] follows the device. */
+    var appLanguage: AppLanguage
 }
 
 class AppPreferences(
@@ -63,6 +78,36 @@ class AppPreferences(
             prefs.edit().putBoolean(KEY_NO_SPAM_FOR_CONTACTS, value).apply()
         }
 
+    override var deliveryReports: Boolean
+        get() = prefs.getBoolean(KEY_DELIVERY_REPORTS, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_DELIVERY_REPORTS, value).apply()
+        }
+
+    override var sendDelaySeconds: Int
+        get() = prefs.getInt(KEY_SEND_DELAY_SECONDS, 0)
+        set(value) {
+            prefs.edit().putInt(KEY_SEND_DELAY_SECONDS, value.coerceIn(0, 30)).apply()
+        }
+
+    override var autoDeleteLimit: Int
+        get() = prefs.getInt(KEY_AUTO_DELETE_LIMIT, 0)
+        set(value) {
+            prefs.edit().putInt(KEY_AUTO_DELETE_LIMIT, value.coerceAtLeast(0)).apply()
+        }
+
+    override var lockScreenPrivacy: LockScreenPrivacy
+        get() = LockScreenPrivacy.fromName(prefs.getString(KEY_LOCK_SCREEN_PRIVACY, null))
+        set(value) {
+            prefs.edit().putString(KEY_LOCK_SCREEN_PRIVACY, value.name).apply()
+        }
+
+    override var appLanguage: AppLanguage
+        get() = AppLanguage.fromName(prefs.getString(KEY_APP_LANGUAGE, null))
+        set(value) {
+            prefs.edit().putString(KEY_APP_LANGUAGE, value.name).apply()
+        }
+
     companion object {
         const val PREFS_NAME = "ramesh_preferences"
         const val KEY_SHOW_CONTACTS_ONLY = "show_contacts_only"
@@ -72,5 +117,10 @@ class AppPreferences(
         const val KEY_SHOW_TABS = "show_tabs"
         const val KEY_SHOW_SIM_FILTER = "show_sim_filter"
         const val KEY_NO_SPAM_FOR_CONTACTS = "no_spam_for_contacts"
+        const val KEY_DELIVERY_REPORTS = "delivery_reports"
+        const val KEY_SEND_DELAY_SECONDS = "send_delay_seconds"
+        const val KEY_AUTO_DELETE_LIMIT = "auto_delete_limit"
+        const val KEY_LOCK_SCREEN_PRIVACY = "lock_screen_privacy"
+        const val KEY_APP_LANGUAGE = "app_language"
     }
 }
