@@ -2,7 +2,7 @@
 <!-- Settings screen -->
 <resources>
     <string name="settings_title">Settings</string>
-    <string name="settings_subtitle">Look & feel</string>
+    <string name="settings_subtitle">Look &amp; feel</string>
     <string name="settings_back">Back</string>
     <string name="settings_cancel">Cancel</string>
     <string name="settings_restore">Restore</string>
