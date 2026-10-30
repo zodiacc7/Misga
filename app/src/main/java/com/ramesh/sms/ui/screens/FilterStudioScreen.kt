@@ -715,7 +715,7 @@ private fun PlaygroundTab(
                     val res = state.testResult
                     if (res != null && !res.isValid) {
                         Text(
-                            stringResource(R.string.filter_error, res.errorMessage),
+                            stringResource(R.string.filter_error, res.errorMessage.orEmpty()),
                             color = MaterialTheme.colorScheme.error
                         )
                     } else {
