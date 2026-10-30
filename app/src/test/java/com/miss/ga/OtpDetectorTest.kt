@@ -41,7 +41,7 @@ class OtpDetectorTest {
 
     @Test
     fun otpKeywordIsDetected() {
-        val body = "Your OTP is 778899 for MISGA login."
+        val body = "Your OTP is 778899 for Ramesh login."
         assertEquals("778899", OtpDetector.findCode(body))
     }
 

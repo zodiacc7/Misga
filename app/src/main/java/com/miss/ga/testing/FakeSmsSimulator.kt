@@ -6,7 +6,7 @@ import android.content.Context
 import android.net.Uri
 import android.provider.Telephony
 import android.util.Log
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.FilterAction
 import com.miss.ga.data.repository.SmsRepository
 import com.miss.ga.engine.NotificationHelper
@@ -103,7 +103,7 @@ object FakeSmsSimulator {
         sender: String,
         body: String
     ): SimulationResult = withContext(Dispatchers.IO) {
-        val dbHelper = MisgaDatabaseHelper.getInstance(context)
+        val dbHelper = RameshDatabaseHelper.getInstance(context)
         val filterEngine = SmsFilterEngine(dbHelper)
         val notificationHelper = NotificationHelper.getInstance(context)
         val repository = SmsRepository(context)

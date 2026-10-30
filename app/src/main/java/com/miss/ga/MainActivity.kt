@@ -23,7 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import com.miss.ga.engine.NotificationHelper
 import com.miss.ga.theme.AppearanceStore
-import com.miss.ga.theme.MISGATheme
+import com.miss.ga.theme.RameshTheme
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -47,7 +47,7 @@ class MainActivity : ComponentActivity() {
         requestRequiredPermissions()
 
         setContent {
-            MISGATheme {
+            RameshTheme {
                 // Forced dark/black themes need light system-bar icons to stay readable.
                 val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
                 SideEffect {

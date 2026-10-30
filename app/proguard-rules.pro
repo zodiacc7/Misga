@@ -1,4 +1,4 @@
-# R8 rules for Misga (release minification enabled).
+# R8 rules for Ramesh (release minification enabled).
 
 # --- kotlinx.serialization ---
 # Official rules: https://github.com/Kotlin/kotlinx.serialization#android

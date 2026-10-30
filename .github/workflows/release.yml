@@ -60,12 +60,12 @@ jobs:
             echo "::error::SIGNING_KEYSTORE secret is missing"
             exit 1
           fi
-          echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/misga-release.jks"
-          test -s "$RUNNER_TEMP/misga-release.jks"
+          echo "$SIGNING_KEYSTORE" | tr -d '\n\r ' | base64 --decode > "$RUNNER_TEMP/ramesh-release.jks"
+          test -s "$RUNNER_TEMP/ramesh-release.jks"
 
       - name: Build signed release APK
         env:
-          SIGNING_STORE_FILE: ${{ runner.temp }}/misga-release.jks
+          SIGNING_STORE_FILE: ${{ runner.temp }}/ramesh-release.jks
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -88,7 +88,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/misga-${VERSION}-universal.apk"
+          cp app/build/outputs/apk/release/app-release.apk "dist/ramesh-${VERSION}-universal.apk"
           sha256sum dist/*.apk | tee dist/SHA256SUMS
 
       - name: Publish GitHub Release
@@ -97,11 +97,11 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           gh release upload "$VERSION" \
-            "dist/misga-${VERSION}-universal.apk" \
+            "dist/ramesh-${VERSION}-universal.apk" \
             dist/SHA256SUMS \
             --clobber 2>/dev/null || \
           gh release create "$VERSION" \
             --title "$VERSION" \
             --generate-notes \
-            "dist/misga-${VERSION}-universal.apk" \
+            "dist/ramesh-${VERSION}-universal.apk" \
             dist/SHA256SUMS

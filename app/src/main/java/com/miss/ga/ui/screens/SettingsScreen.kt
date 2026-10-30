@@ -520,7 +520,7 @@ private fun BubblePreviewCard(look: Appearance) {
                     )
                 ) {
                     Text(
-                        text = "Misga looks like this",
+                        text = "Ramesh looks like this",
                         style = MaterialTheme.typography.bodyMedium,
                         color = look.receivedTone.bubbleContent(false),
                         modifier = Modifier

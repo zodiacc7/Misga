@@ -14,7 +14,7 @@ import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.FilterAction
 import com.miss.ga.data.model.FilterRule
 import com.miss.ga.data.model.PreferredSimMode
@@ -70,7 +70,7 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     private val repository = SmsRepository(application)
-    private val dbHelper = MisgaDatabaseHelper.getInstance(application)
+    private val dbHelper = RameshDatabaseHelper.getInstance(application)
     val selectedMessageIds = mutableStateSetOf<Long>()
     var isSelectionMode by mutableStateOf(false)
         private set

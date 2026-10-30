@@ -1,3 +1,4 @@
+• The app is now رامش (Ramesh); your messages, filters and settings carry over unchanged
 • New Textra-style Settings screen: theme mode (Auto/Light/Dark/AMOLED Black) and nine accent colors
 • Bubble styles with a tail, separate sent/received bubble colors, message text size and font
 • Chat background tones and support for your own wallpaper photo

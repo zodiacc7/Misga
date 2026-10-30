@@ -1,6 +1,6 @@
 package com.miss.ga.engine
 
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.SenderPreference
 import com.miss.ga.data.util.PhoneNumberKeys
 import kotlinx.coroutines.CoroutineScope
@@ -11,7 +11,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.IdentityHashMap
 
-class FilterRulesCache private constructor(private val dbHelper: MisgaDatabaseHelper) {
+class FilterRulesCache private constructor(private val dbHelper: RameshDatabaseHelper) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -80,9 +80,9 @@ class FilterRulesCache private constructor(private val dbHelper: MisgaDatabaseHe
     }
 
     companion object {
-        private val caches = IdentityHashMap<MisgaDatabaseHelper, FilterRulesCache>()
+        private val caches = IdentityHashMap<RameshDatabaseHelper, FilterRulesCache>()
 
-        fun getInstance(dbHelper: MisgaDatabaseHelper): FilterRulesCache {
+        fun getInstance(dbHelper: RameshDatabaseHelper): FilterRulesCache {
             synchronized(caches) {
                 return caches.getOrPut(dbHelper) { FilterRulesCache(dbHelper) }
             }

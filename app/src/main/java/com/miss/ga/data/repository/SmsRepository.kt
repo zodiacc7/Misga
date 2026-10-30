@@ -13,7 +13,7 @@ import android.provider.Telephony
 import android.telephony.SmsManager
 import android.telephony.SubscriptionManager
 import android.util.Log
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.db.SpamMetaWrite
 import com.miss.ga.data.model.ConversationThread
 import com.miss.ga.data.model.FilterAction
@@ -45,7 +45,7 @@ class SmsRepository(
     private val userPreferences: UserPreferences = AppPreferences(context)
 ) {
 
-    private val dbHelper = MisgaDatabaseHelper.getInstance(context)
+    private val dbHelper = RameshDatabaseHelper.getInstance(context)
 
     fun isDefaultSmsApp(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
