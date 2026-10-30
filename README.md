@@ -97,7 +97,7 @@ Then add the pattern in Filter Studio as a blocklist rule.
 ### Install
 
 1. Download the signed `ramesh-<version>-universal.apk` from
-   [GitHub Releases](https://github.com/zodiacc7/Misga/releases).
+   [GitHub Releases](https://github.com/zodiacc7/ramesh/releases).
 2. Install it and open Ramesh.
 3. Grant SMS, contacts and notification permissions.
 4. Accept the prompt to become the default SMS app.
@@ -151,7 +151,7 @@ Misga is safe once you have exported your filters from Filter Studio.
 
 ### Contributing
 
-Issues and pull requests: <https://github.com/zodiacc7/Misga>.
+Issues and pull requests: <https://github.com/zodiacc7/ramesh>.
 
 ### Credits & license
 
@@ -249,7 +249,7 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 ### نصب
 
 ۱. فایل امضاشدهٔ `ramesh-<version>-universal.apk` را از
-   [GitHub Releases](https://github.com/zodiacc7/Misga/releases) دانلود کنید.
+   [GitHub Releases](https://github.com/zodiacc7/ramesh/releases) دانلود کنید.
 ۲. نصب کنید و رامش را باز کنید.
 ۳. دسترسی پیامک، مخاطبین و اعلان را بدهید.
 ۴. درخواست «برنامهٔ پیامک پیش‌فرض» را بپذیرید.
@@ -302,7 +302,7 @@ app/src/main/java/com/ramesh/sms/
 
 ### مشارکت
 
-گزارش خطا و درخواست تغییر: <https://github.com/zodiacc7/Misga>
+گزارش خطا و درخواست تغییر: <https://github.com/zodiacc7/ramesh>
 
 ### اعتبار و پروانه
 
