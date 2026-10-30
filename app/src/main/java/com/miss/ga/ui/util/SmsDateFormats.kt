@@ -154,6 +154,29 @@ object SmsDateFormats {
     fun monthDayClock(timestamp: Long): String =
         Instant.ofEpochMilli(timestamp).atZone(zone).format(monthDayClock)
 
+    fun isSameDay(first: Long, second: Long): Boolean {
+        val firstDate = Instant.ofEpochMilli(first).atZone(zone).toLocalDate()
+        val secondDate = Instant.ofEpochMilli(second).atZone(zone).toLocalDate()
+        return firstDate == secondDate
+    }
+
+    /**
+     * Sticky-style chat divider label: "Today", "Yesterday", or a formatted date.
+     */
+    fun dayHeader(
+        timestamp: Long,
+        useShamsi: Boolean = false,
+        now: Long = System.currentTimeMillis()
+    ): String {
+        val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
+        val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        return when {
+            messageDate == today -> "Today"
+            messageDate == today.minusDays(1) -> "Yesterday"
+            else -> formatDate(timestamp, useShamsi, now)
+        }
+    }
+
     fun conversationList(timestamp: Long, now: Long = System.currentTimeMillis()): String {
         val diff = now - timestamp
         val oneDay = 24 * 60 * 60 * 1000L

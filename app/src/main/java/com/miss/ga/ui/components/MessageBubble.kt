@@ -3,6 +3,7 @@ package com.miss.ga.ui.components
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -28,15 +29,21 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.miss.ga.data.model.SmsMessage
-import com.miss.ga.theme.IncomingBubbleShape
-import com.miss.ga.theme.OutgoingBubbleShape
+import com.miss.ga.theme.AppearanceStore
+import com.miss.ga.theme.PillShape
+import com.miss.ga.theme.bubbleBackground
+import com.miss.ga.theme.bubbleContentBottomPadding
+import com.miss.ga.theme.chatBubbleShape
+import com.miss.ga.theme.bubbleContent
 import com.miss.ga.ui.util.SmsDateFormats
 import com.miss.ga.ui.util.contentAware
 
@@ -54,24 +61,21 @@ fun MessageBubble(
     onToggleSelect: () -> Unit = {},
     selectionResetKey: Any = Unit,
     onBubbleTouched: () -> Unit = {},
-    onOutsideTap: () -> Unit = {}
+    onOutsideTap: () -> Unit = {},
+    showAvatar: Boolean = false,
+    avatar: (@Composable () -> Unit)? = null
 ) {
     val isSent = message.isSent
-    val bubbleShape = if (isSent) OutgoingBubbleShape else IncomingBubbleShape
+    val look = AppearanceStore.current
+    val bubbleShape = chatBubbleShape(
+        outgoing = isSent,
+        style = look.bubbleStyle,
+        tail = look.bubbleTail
+    )
     val emphasized = isHighlighted || isSelected
-    val containerColor = if (emphasized) {
-        if (isSent) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-        else MaterialTheme.colorScheme.secondaryContainer
-    } else if (isSent) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val contentColor = if (isSent) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
+    val tone = if (isSent) look.sentTone else look.receivedTone
+    val containerColor = tone.bubbleBackground(isSent)
+    val contentColor = tone.bubbleContent(isSent)
     val border = when {
         emphasized -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
         isSent -> null
@@ -79,6 +83,13 @@ fun MessageBubble(
     }
     val dateText = remember(message.date, useShamsi) { SmsDateFormats.formatDate(message.date, useShamsi) }
     val timeText = remember(message.date) { SmsDateFormats.clock(message.date) }
+    // Keep long messages from touching both edges, like every modern messenger.
+    val context = LocalContext.current
+    val maxBubbleWidth = remember(context) {
+        val metrics = context.resources.displayMetrics
+        (metrics.widthPixels * 0.8f / metrics.density).dp
+    }
+    val tailPadding = bubbleContentBottomPadding(look.bubbleStyle, look.bubbleTail)
 
     val outsideModifier = Modifier
         .fillMaxSize()
@@ -98,6 +109,15 @@ fun MessageBubble(
         if (isSent) {
             Spacer(modifier = Modifier.weight(1f).then(outsideModifier))
         }
+        if (!isSent && showAvatar && avatar != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Bottom)
+                    .padding(end = 8.dp, bottom = 2.dp)
+            ) {
+                avatar()
+            }
+        }
         if (isSelectionMode) {
             Surface(
                 onClick = onToggleSelect,
@@ -105,7 +125,7 @@ fun MessageBubble(
                 color = containerColor,
                 border = border,
                 shadowElevation = 0.dp,
-                modifier = Modifier.widthIn(min = 80.dp, max = 320.dp)
+                modifier = Modifier.widthIn(min = 80.dp, max = maxBubbleWidth)
             ) {
                 BubbleContent(
                     message = message,
@@ -115,7 +135,8 @@ fun MessageBubble(
                     isSent = isSent,
                     simSlotNumber = simSlotNumber,
                     onToggleDateFormat = onToggleDateFormat,
-                    selectable = false
+                    selectable = false,
+                    tailPadding = tailPadding
                 )
             }
         } else {
@@ -125,7 +146,7 @@ fun MessageBubble(
                 border = border,
                 shadowElevation = 0.dp,
                 modifier = Modifier
-                    .widthIn(min = 80.dp, max = 320.dp)
+                    .widthIn(min = 80.dp, max = maxBubbleWidth)
                     .pointerInput(message.id) {
                         awaitPointerEventScope {
                             while (true) {
@@ -146,6 +167,7 @@ fun MessageBubble(
                     simSlotNumber = simSlotNumber,
                     onToggleDateFormat = onToggleDateFormat,
                     selectable = true,
+                    tailPadding = tailPadding,
                     selectionResetKey = selectionResetKey
                 )
             }
@@ -159,24 +181,35 @@ fun MessageBubble(
 @Composable
 private fun BubbleContent(
     message: SmsMessage,
-    contentColor: androidx.compose.ui.graphics.Color,
+    contentColor: Color,
     dateText: String,
     timeText: String,
     isSent: Boolean,
     simSlotNumber: Int?,
     onToggleDateFormat: (() -> Unit)?,
     selectable: Boolean,
+    tailPadding: androidx.compose.ui.unit.Dp,
     selectionResetKey: Any = Unit
 ) {
+    val look = AppearanceStore.current
+    val scale = look.chatFontSize.scale
+    val bodyStyle = MaterialTheme.typography.bodyLarge
+        .contentAware()
+        .copy(fontSize = (16f * scale).sp, lineHeight = (23f * scale).sp)
+
     Column(
-        modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+        modifier = Modifier.padding(
+            start = 14.dp,
+            end = 14.dp,
+            top = 9.dp,
+            bottom = 9.dp + tailPadding
+        )
     ) {
         val bodyText = @Composable {
             Text(
                 text = message.body,
-                style = MaterialTheme.typography.bodyLarge.contentAware(),
+                style = bodyStyle,
                 color = contentColor,
-                lineHeight = 23.sp,
                 letterSpacing = 0.2.sp
             )
         }
@@ -196,14 +229,15 @@ private fun BubbleContent(
             if (simSlotNumber != null) {
                 SimBadge(
                     slotNumber = simSlotNumber,
-                    isSent = isSent
+                    isSent = isSent,
+                    tint = contentColor
                 )
                 Spacer(modifier = Modifier.width(5.dp))
             }
             Text(
                 text = dateText,
                 style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.65f),
+                color = contentColor.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
@@ -218,7 +252,7 @@ private fun BubbleContent(
             Text(
                 text = timeText,
                 style = MaterialTheme.typography.labelSmall,
-                color = contentColor.copy(alpha = 0.65f),
+                color = contentColor.copy(alpha = 0.7f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -228,17 +262,17 @@ private fun BubbleContent(
                     message.isFailed -> Triple(
                         Icons.Default.ErrorOutline,
                         "Failed",
-                        MaterialTheme.colorScheme.error.copy(alpha = 0.85f)
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.9f)
                     )
                     message.isDelivered -> Triple(
                         Icons.Default.DoneAll,
                         "Delivered",
-                        contentColor.copy(alpha = 0.65f)
+                        contentColor.copy(alpha = 0.7f)
                     )
                     else -> Triple(
                         Icons.Default.Done,
                         "Sent",
-                        contentColor.copy(alpha = 0.65f)
+                        contentColor.copy(alpha = 0.7f)
                     )
                 }
                 Icon(
@@ -248,6 +282,31 @@ private fun BubbleContent(
                     modifier = Modifier.size(13.dp)
                 )
             }
+        }
+    }
+}
+
+/** Textra-style day divider shown between message groups. */
+@Composable
+fun ChatDateHeader(text: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = PillShape,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
+            shadowElevation = 0.dp
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
         }
     }
 }

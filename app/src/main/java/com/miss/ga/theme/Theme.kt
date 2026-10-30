@@ -2,12 +2,16 @@ package com.miss.ga.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColors = lightColorScheme(
@@ -78,26 +82,90 @@ private val DarkColors = darkColorScheme(
     outlineVariant = md_theme_dark_outlineVariant
 )
 
+/** Applies a Textra-style accent palette on top of Misga's base scheme. */
+private fun ColorScheme.withAccent(palette: AccentPalette, dark: Boolean): ColorScheme {
+    return if (dark) {
+        copy(
+            primary = palette.darkPrimary,
+            onPrimary = palette.darkOnPrimary,
+            primaryContainer = palette.darkPrimaryContainer,
+            onPrimaryContainer = palette.darkOnPrimaryContainer,
+            secondary = lerp(palette.darkPrimary, Color(0xFFB8C2C6), 0.6f),
+            onSecondary = Color(0xFF152024),
+            secondaryContainer = lerp(palette.darkPrimaryContainer, Color(0xFF2E383B), 0.55f),
+            onSecondaryContainer = lerp(palette.darkPrimaryContainer, Color.White, 0.78f),
+            tertiary = lerp(palette.darkPrimary, Color(0xFFC9C3D6), 0.65f),
+            onTertiary = Color(0xFF1B1A23),
+            tertiaryContainer = lerp(palette.darkPrimaryContainer, Color(0xFF35313D), 0.65f),
+            onTertiaryContainer = lerp(palette.darkPrimaryContainer, Color.White, 0.82f)
+        )
+    } else {
+        copy(
+            primary = palette.lightPrimary,
+            onPrimary = palette.lightOnPrimary,
+            primaryContainer = palette.lightPrimaryContainer,
+            onPrimaryContainer = palette.lightOnPrimaryContainer,
+            secondary = lerp(palette.lightPrimary, Color(0xFF4A5658), 0.62f),
+            onSecondary = Color.White,
+            secondaryContainer = lerp(palette.lightPrimaryContainer, Color(0xFFE3E9EA), 0.5f),
+            onSecondaryContainer = lerp(palette.lightPrimary, Color(0xFF0A1A1C), 0.62f),
+            tertiary = lerp(palette.lightPrimary, Color(0xFF5B5A66), 0.62f),
+            onTertiary = Color.White,
+            tertiaryContainer = lerp(palette.lightPrimaryContainer, Color(0xFFEAE7F0), 0.6f),
+            onTertiaryContainer = lerp(palette.lightPrimary, Color(0xFF151220), 0.72f)
+        )
+    }
+}
+
+/** Textra's "Black" theme: true black surfaces for AMOLED screens. */
+private fun ColorScheme.asBlack(): ColorScheme = copy(
+    background = Color(0xFF000000),
+    onBackground = Color(0xFFE8E8E8),
+    surface = Color(0xFF000000),
+    onSurface = Color(0xFFE8E8E8),
+    surfaceVariant = Color(0xFF2A2E31),
+    onSurfaceVariant = Color(0xFFC4C8CB),
+    surfaceDim = Color(0xFF000000),
+    surfaceBright = Color(0xFF24272A),
+    surfaceContainerLowest = Color(0xFF000000),
+    surfaceContainerLow = Color(0xFF070809),
+    surfaceContainer = Color(0xFF0D0F10),
+    surfaceContainerHigh = Color(0xFF16181A),
+    surfaceContainerHighest = Color(0xFF202325),
+    outline = Color(0xFF7C8487),
+    outlineVariant = Color(0xFF2C3033)
+)
+
 @Composable
 fun MISGATheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    appearance: Appearance = AppearanceStore.current,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
+    val darkTheme = when (appearance.themeMode) {
+        ThemeMode.AUTO -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK, ThemeMode.BLACK -> true
+    }
+
+    val context = LocalContext.current
+    val baseColors = when {
+        appearance.accent == AccentColor.SYSTEM && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
         darkTheme -> DarkColors
         else -> LightColors
     }
 
+    val palette = appearance.accent.palette
+    val accentColors = if (palette != null) baseColors.withAccent(palette, darkTheme) else baseColors
+    val colorScheme = if (appearance.themeMode == ThemeMode.BLACK) accentColors.asBlack() else accentColors
+
+    val typography = remember(appearance.fontFamily) { typographyFor(appearance.fontFamily) }
+
     MaterialTheme(
         colorScheme = colorScheme,
         shapes = Shapes,
-        typography = Typography,
+        typography = typography,
         content = content
     )
 }
-

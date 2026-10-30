@@ -3,7 +3,6 @@ package com.miss.ga.ui.screens
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.net.Uri
-import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -42,6 +41,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Deselect
 import androidx.compose.material.icons.filled.DriveFileMove
@@ -49,12 +49,15 @@ import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MarkChatRead
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
@@ -100,6 +103,7 @@ import com.miss.ga.data.model.ConversationThread
 import com.miss.ga.data.model.SearchMessageResult
 import androidx.compose.ui.semantics.Role
 import com.miss.ga.data.model.SenderTab
+import com.miss.ga.theme.AppearanceStore
 import com.miss.ga.theme.PillShape
 import com.miss.ga.ui.components.AddToTabDialog
 import com.miss.ga.ui.components.ContactProfileDialog
@@ -132,6 +136,7 @@ fun ConversationsScreen(
     onNavigateToFilterStudio: () -> Unit,
     onNavigateToCompose: () -> Unit,
     onNavigateToTestLab: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: ConversationsViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -222,7 +227,8 @@ fun ConversationsScreen(
                 },
                 onNavigateToTestLab = onNavigateToTestLab,
                 onNavigateToFilterStudio = onNavigateToFilterStudio,
-                onOpenCustomization = { showCustomizationSheet = true }
+                onOpenCustomization = { showCustomizationSheet = true },
+                onOpenSettings = onNavigateToSettings
             )
         },
         floatingActionButton = {
@@ -365,7 +371,7 @@ fun ConversationsScreen(
                         )
                         TextButton(
                             onClick = {
-                                val settingsIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                val settingsIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                                     data = Uri.fromParts("package", context.packageName, null)
                                 }
                                 context.startActivity(settingsIntent)
@@ -815,6 +821,10 @@ fun ConversationsScreen(
             onToggleNotificationDeleteAction = { enabled ->
                 viewModel.setNotificationDeleteActionEnabled(enabled)
             },
+            onOpenSettings = {
+                showCustomizationSheet = false
+                onNavigateToSettings()
+            },
             onDismiss = { showCustomizationSheet = false }
         )
     }
@@ -839,7 +849,8 @@ private fun ConversationsTopBar(
     onMarkAllRead: () -> Unit,
     onNavigateToTestLab: () -> Unit,
     onNavigateToFilterStudio: () -> Unit,
-    onOpenCustomization: () -> Unit
+    onOpenCustomization: () -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     if (isSelectionMode) {
         val selectedCount = selectedThreadIds.size
@@ -949,43 +960,9 @@ private fun ConversationsTopBar(
                     }
                 }
 
-                if (threads.isNotEmpty()) {
-                    val hasUnread = threads.any { it.unreadCount > 0 }
-                    Surface(
-                        shape = CircleShape,
-                        color = if (hasUnread) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.padding(end = 6.dp)
-                    ) {
-                        IconButton(onClick = onMarkAllRead) {
-                            Icon(
-                                imageVector = Icons.Default.MarkChatRead,
-                                contentDescription = "Mark all as read",
-                                tint = if (hasUnread) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
-                if (isDebuggable) {
-                    Surface(
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                        modifier = Modifier.padding(end = 6.dp)
-                    ) {
-                        IconButton(onClick = onNavigateToTestLab) {
-                            Icon(
-                                imageVector = Icons.Default.BugReport,
-                                contentDescription = "Test Lab & Simulator",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.padding(end = 6.dp)
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
                     IconButton(onClick = onNavigateToFilterStudio) {
                         Icon(
@@ -996,17 +973,64 @@ private fun ConversationsTopBar(
                     }
                 }
 
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.padding(end = 8.dp)
-                ) {
-                    IconButton(onClick = onOpenCustomization) {
+                // Textra keeps its top bar tidy: everything else lives in an overflow menu.
+                var showOverflowMenu by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.padding(start = 2.dp, end = 4.dp)) {
+                    IconButton(onClick = { showOverflowMenu = true }) {
                         Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Customize",
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
                             tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                    DropdownMenu(
+                        expanded = showOverflowMenu,
+                        onDismissRequest = { showOverflowMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Customize inbox") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Tune, contentDescription = null)
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                onOpenCustomization()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                onOpenSettings()
+                            }
+                        )
+                        if (threads.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Mark all as read") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.MarkChatRead, contentDescription = null)
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onMarkAllRead()
+                                }
+                            )
+                        }
+                        if (isDebuggable) {
+                            DropdownMenuItem(
+                                text = { Text("Test Lab") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.BugReport, contentDescription = null)
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onNavigateToTestLab()
+                                }
+                            )
+                        }
                     }
                 }
             },
@@ -1030,6 +1054,7 @@ private fun ConversationsInboxList(
     onEnterSelection: (Long) -> Unit,
     onAvatarClick: (ConversationThread) -> Unit
 ) {
+    val showAvatars = AppearanceStore.current.showInboxAvatars
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = ListBottomFabPadding)
@@ -1043,6 +1068,7 @@ private fun ConversationsInboxList(
                 thread = thread,
                 selectedIds = selectedIds,
                 isSelectionMode = isSelectionMode,
+                showAvatar = showAvatars,
                 simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
                 onClick = {
                     if (isSelectionMode) {
@@ -1069,7 +1095,10 @@ private fun ConversationsInboxList(
                 }
             )
             HorizontalDivider(
-                modifier = Modifier.padding(start = AvatarDividerInset, end = 16.dp),
+                modifier = Modifier.padding(
+                    start = if (showAvatars) AvatarDividerInset else 16.dp,
+                    end = 16.dp
+                ),
                 thickness = 0.5.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
             )
@@ -1126,6 +1155,7 @@ private fun ConversationItem(
     isSelectionMode: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
+    showAvatar: Boolean = true,
     simSlotNumber: Int? = null,
     onAvatarClick: (() -> Unit)? = null
 ) {
@@ -1154,6 +1184,7 @@ private fun ConversationItem(
             .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (showAvatar || isSelectionMode) {
         Box(
             modifier = Modifier.size(50.dp),
             contentAlignment = Alignment.Center
@@ -1213,8 +1244,11 @@ private fun ConversationItem(
                 }
             }
         }
+        }
 
-        Spacer(modifier = Modifier.width(14.dp))
+        if (showAvatar || isSelectionMode) {
+            Spacer(modifier = Modifier.width(14.dp))
+        }
 
         Column(modifier = Modifier.weight(1f)) {
             Row(

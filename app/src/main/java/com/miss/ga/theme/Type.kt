@@ -132,3 +132,21 @@ val Typography = Typography(
         letterSpacing = 0.5.sp
     )
 )
+
+/**
+ * Typography matching the user's message-font choice.
+ * Only the body styles (message text and snippets) are swapped so the UI keeps
+ * its crisp Jakarta labels.
+ */
+fun typographyFor(font: ChatFontFamily): Typography {
+    val family = when (font) {
+        ChatFontFamily.SYSTEM -> FontFamily.Default
+        ChatFontFamily.JAKARTA -> PlusJakartaSans
+        ChatFontFamily.VAZIRMATN -> Vazirmatn
+    }
+    return Typography.copy(
+        bodyLarge = Typography.bodyLarge.copy(fontFamily = family),
+        bodyMedium = Typography.bodyMedium.copy(fontFamily = family),
+        bodySmall = Typography.bodySmall.copy(fontFamily = family)
+    )
+}

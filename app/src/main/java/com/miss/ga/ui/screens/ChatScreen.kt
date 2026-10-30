@@ -32,6 +32,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -87,6 +89,7 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.miss.ga.ChatNav
@@ -94,9 +97,12 @@ import com.miss.ga.data.model.SimInfo
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.miss.ga.data.model.SmsMessage
+import com.miss.ga.theme.AppearanceStore
 import com.miss.ga.theme.InputBarShape
 import com.miss.ga.theme.PillShape
 import com.miss.ga.theme.SquircleCardShape
+import com.miss.ga.ui.components.ChatBackdropBackground
+import com.miss.ga.ui.components.ChatDateHeader
 import com.miss.ga.ui.components.ContactProfileDialog
 import com.miss.ga.ui.components.ConversationAvatar
 import com.miss.ga.ui.components.MessageBubble
@@ -131,6 +137,7 @@ fun ChatScreen(
     }
 
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val look = AppearanceStore.current
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -267,6 +274,28 @@ fun ChatScreen(
             val id = selectedMessageIds.singleOrNull()
             if (id != null) {
                 selectedMessageForDialog = state.messages.find { it.id == id }
+            }
+        }
+    }
+    val performSend: () -> Unit = {
+        if (inputText.isNotBlank() && !state.isSending) {
+            val text = inputText
+            inputText = ""
+            viewModel.sendMessage(text) { result ->
+                if (!result.sent) {
+                    inputText = text
+                    Toast.makeText(
+                        context,
+                        "Couldn't send message. Check signal and default SMS app.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else if (!result.storedInProvider) {
+                    Toast.makeText(
+                        context,
+                        "Misga must be the default SMS app for sent messages to appear",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
@@ -433,7 +462,9 @@ fun ChatScreen(
                 Column(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
-                    SmsSegmentCounter(text = inputText)
+                    if (look.showCharacterCounter) {
+                        SmsSegmentCounter(text = inputText)
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -453,6 +484,10 @@ fun ChatScreen(
                                 .weight(1f)
                                 .padding(end = 8.dp),
                             textStyle = LocalTextStyle.current.contentAware(),
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = if (look.enterToSend) ImeAction.Send else ImeAction.Default
+                            ),
+                            keyboardActions = KeyboardActions(onSend = { performSend() }),
                             shape = InputBarShape,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = MaterialTheme.colorScheme.surface,
@@ -474,24 +509,7 @@ fun ChatScreen(
                         }
 
                         FilledIconButton(
-                            onClick = {
-                                if (inputText.isNotBlank() && !state.isSending) {
-                                    val text = inputText
-                                    inputText = ""
-                                    viewModel.sendMessage(text) { result ->
-                                        if (!result.sent) {
-                                            inputText = text
-                                            Toast.makeText(context, "Couldn't send message. Check signal and default SMS app.", Toast.LENGTH_SHORT).show()
-                                        } else if (!result.storedInProvider) {
-                                            Toast.makeText(
-                                                context,
-                                                "Misga must be the default SMS app for sent messages to appear",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                        }
-                                    }
-                                }
-                            },
+                            onClick = { performSend() },
                             enabled = inputText.isNotBlank() && !state.isSending,
                             shape = CircleShape,
                             colors = IconButtonDefaults.filledIconButtonColors(
@@ -527,6 +545,10 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            ChatBackdropBackground(
+                appearance = look,
+                modifier = Modifier.matchParentSize()
+            )
             if (state.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -587,7 +609,10 @@ fun ChatScreen(
                     activeTextBubbleId = activeTextBubbleId,
                     selectionResetTick = selectionResetTick,
                     onBubbleTouched = { id -> activeTextBubbleId = id },
-                    onOutsideTap = onClearTextSelection
+                    onOutsideTap = onClearTextSelection,
+                    address = state.address,
+                    contactName = state.contactName,
+                    photoUri = state.photoUri
                 )
             }
 
@@ -865,8 +890,12 @@ private fun ChatMessageList(
     activeTextBubbleId: Long? = null,
     selectionResetTick: Int = 0,
     onBubbleTouched: (Long) -> Unit = {},
-    onOutsideTap: () -> Unit = {}
+    onOutsideTap: () -> Unit = {},
+    address: String = "",
+    contactName: String? = null,
+    photoUri: String? = null
 ) {
+    val look = AppearanceStore.current
     val simSlotMap = remember(availableSims) {
         availableSims.associate { it.subscriptionId to it.slotNumber }
     }
@@ -894,38 +923,71 @@ private fun ChatMessageList(
             val message = messages[messages.lastIndex - index]
             val isHighlighted = message.id == highlightedMessageId
             val simSlotNumber = if (hasMultipleSims) simSlotMap[message.subId] else null
-            if (message.isSpam) {
-                SpamMessagePill(
-                    message = message,
-                    isHighlighted = isHighlighted,
-                    simSlotNumber = simSlotNumber,
-                    useShamsi = showShamsiDate,
-                    onToggleDateFormat = onDateTapAction,
-                    onRevealToggle = { revealed -> onRevealToggle(message.id, revealed) },
-                    onMarkNotSpam = { onMarkNotSpam(message.id) },
-                    onDelete = { onDelete(message.id) },
-                    isSelectionMode = isSelectionMode,
-                    isSelected = message.id in selectedMessageIds,
-                    onLongClick = { onLongClick(message) },
-                    onToggleSelect = { onTapMessage(message) }
-                )
+            val olderMessage = messages.getOrNull(messages.lastIndex - index - 1)
+            // Like Telegram/Textra: one avatar per run of incoming messages.
+            val newerMessage = messages.getOrNull(messages.lastIndex - index + 1)
+            val showAvatarForMessage = look.showChatAvatars &&
+                !message.isSent &&
+                (newerMessage == null || newerMessage.isSent)
+            val headerText = if (
+                look.showDateHeaders &&
+                (olderMessage == null || !SmsDateFormats.isSameDay(olderMessage.date, message.date))
+            ) {
+                SmsDateFormats.dayHeader(message.date, showShamsiDate)
             } else {
-                val isTargetOfReset = (activeTextBubbleId == message.id)
-                val bubbleResetKey = if (isTargetOfReset) selectionResetTick else 0
-                MessageBubble(
-                    message = message,
-                    isHighlighted = isHighlighted,
-                    simSlotNumber = simSlotNumber,
-                    useShamsi = showShamsiDate,
-                    onToggleDateFormat = onDateTapAction,
-                    onLongClick = { onLongClick(message) },
-                    isSelectionMode = isSelectionMode,
-                    isSelected = message.id in selectedMessageIds,
-                    onToggleSelect = { onTapMessage(message) },
-                    selectionResetKey = bubbleResetKey,
-                    onBubbleTouched = { onBubbleTouched(message.id) },
-                    onOutsideTap = onOutsideTap
-                )
+                null
+            }
+            Column(modifier = Modifier.fillMaxWidth()) {
+                if (headerText != null) {
+                    ChatDateHeader(text = headerText)
+                }
+                if (message.isSpam) {
+                    SpamMessagePill(
+                        message = message,
+                        isHighlighted = isHighlighted,
+                        simSlotNumber = simSlotNumber,
+                        useShamsi = showShamsiDate,
+                        onToggleDateFormat = onDateTapAction,
+                        onRevealToggle = { revealed -> onRevealToggle(message.id, revealed) },
+                        onMarkNotSpam = { onMarkNotSpam(message.id) },
+                        onDelete = { onDelete(message.id) },
+                        isSelectionMode = isSelectionMode,
+                        isSelected = message.id in selectedMessageIds,
+                        onLongClick = { onLongClick(message) },
+                        onToggleSelect = { onTapMessage(message) }
+                    )
+                } else {
+                    val isTargetOfReset = (activeTextBubbleId == message.id)
+                    val bubbleResetKey = if (isTargetOfReset) selectionResetTick else 0
+                    val avatarSlot: (@Composable () -> Unit)? = if (showAvatarForMessage) {
+                        {
+                            ConversationAvatar(
+                                address = message.address,
+                                contactName = contactName,
+                                photoUri = photoUri,
+                                size = 28.dp
+                            )
+                        }
+                    } else {
+                        null
+                    }
+                    MessageBubble(
+                        message = message,
+                        isHighlighted = isHighlighted,
+                        simSlotNumber = simSlotNumber,
+                        useShamsi = showShamsiDate,
+                        onToggleDateFormat = onDateTapAction,
+                        onLongClick = { onLongClick(message) },
+                        isSelectionMode = isSelectionMode,
+                        isSelected = message.id in selectedMessageIds,
+                        onToggleSelect = { onTapMessage(message) },
+                        selectionResetKey = bubbleResetKey,
+                        onBubbleTouched = { onBubbleTouched(message.id) },
+                        onOutsideTap = onOutsideTap,
+                        showAvatar = showAvatarForMessage,
+                        avatar = avatarSlot
+                    )
+                }
             }
         }
         if (isLoadingOlder) {
