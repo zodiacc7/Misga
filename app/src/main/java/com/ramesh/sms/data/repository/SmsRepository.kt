@@ -1,0 +1,1459 @@
+package com.ramesh.sms.data.repository
+
+import android.app.PendingIntent
+import android.app.role.RoleManager
+import android.content.ContentUris
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.ContactsContract
+import android.provider.Telephony
+import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
+import android.util.Log
+import com.ramesh.sms.data.db.RameshDatabaseHelper
+import com.ramesh.sms.data.db.SpamMetaWrite
+import com.ramesh.sms.data.model.ConversationThread
+import com.ramesh.sms.data.model.FilterAction
+import com.ramesh.sms.data.model.PreferredSimMode
+import com.ramesh.sms.data.model.SearchMessageResult
+import com.ramesh.sms.data.model.SenderPreference
+import com.ramesh.sms.data.model.SenderTab
+import com.ramesh.sms.data.model.SmsMessage
+import com.ramesh.sms.data.telephony.SimRepository
+import com.ramesh.sms.data.util.AppPreferences
+import com.ramesh.sms.data.util.PhoneNumberKeys
+import com.ramesh.sms.data.util.UserPreferences
+import com.ramesh.sms.engine.FilterRulesCache
+import com.ramesh.sms.engine.IncomingSmsPolicy
+import com.ramesh.sms.engine.NotificationHelper
+import com.ramesh.sms.engine.PreparedFilterRules
+import com.ramesh.sms.engine.SmsFilterEngine
+import com.ramesh.sms.receiver.SmsSendTracker
+import com.ramesh.sms.receiver.SmsSentReceiver
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicLong
+
+private const val TAG = "SmsRepository"
+
+class SmsRepository(
+    private val context: Context,
+    private val userPreferences: UserPreferences = AppPreferences(context)
+) {
+
+    private val dbHelper = RameshDatabaseHelper.getInstance(context)
+
+    fun isDefaultSmsApp(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = context.getSystemService(RoleManager::class.java)
+            if (roleManager != null &&
+                roleManager.isRoleAvailable(RoleManager.ROLE_SMS) &&
+                roleManager.isRoleHeld(RoleManager.ROLE_SMS)
+            ) {
+                return true
+            }
+        }
+        return try {
+            Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    val simRepository = SimRepository(context)
+
+    fun putDefaultSmsSubscription(values: ContentValues, subscriptionId: Int? = null) {
+        val subId = if (subscriptionId != null && subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            subscriptionId
+        } else {
+            defaultSmsSubscriptionId()
+        }
+        if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            values.put(Telephony.Sms.SUBSCRIPTION_ID, subId)
+        }
+    }
+
+    private fun defaultSmsSubscriptionId(): Int = simRepository.getDefaultSmsSubscriptionId()
+
+    private fun smsManager(subscriptionId: Int? = null): SmsManager {
+        val defaultManager = context.getSystemService(SmsManager::class.java)
+            ?: SmsManager.getDefault()
+        val subId = if (subscriptionId != null && subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            subscriptionId
+        } else {
+            defaultSmsSubscriptionId()
+        }
+        if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            return defaultManager
+        }
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            defaultManager.createForSubscriptionId(subId)
+        } else {
+            @Suppress("DEPRECATION")
+            SmsManager.getSmsManagerForSubscriptionId(subId)
+        }
+    }
+
+    suspend fun getCachedThreads(): List<ConversationThread> =
+        dbHelper.getCachedThreads().filterNot { thread ->
+            IncomingSmsPolicy.isGhostConversation(thread.address, thread.snippet)
+        }
+
+    suspend fun saveCachedThreads(threads: List<ConversationThread>) =
+        dbHelper.replaceCachedThreads(threads)
+
+    suspend fun getThreads(): List<ConversationThread> = withContext(Dispatchers.IO) {
+        val threads = mutableListOf<ConversationThread>()
+        val contentResolver = context.contentResolver
+
+        val uri = Telephony.Threads.CONTENT_URI.buildUpon()
+            .appendQueryParameter("simple", "true")
+            .build()
+
+        val projection = arrayOf(
+            Telephony.Threads._ID,
+            Telephony.Threads.DATE,
+            Telephony.Threads.MESSAGE_COUNT,
+            Telephony.Threads.RECIPIENT_IDS,
+            Telephony.Threads.SNIPPET,
+            Telephony.Threads.READ
+        )
+
+        try {
+            val threadRows = mutableListOf<ThreadProviderRow>()
+            val threadIds = mutableSetOf<Long>()
+            var threadsCursorOk = false
+
+            val cursor = contentResolver.query(
+                uri,
+                projection,
+                null, null,
+                "${Telephony.Threads.DATE} DESC"
+            )
+            cursor?.use {
+                threadsCursorOk = true
+                val idIdx = it.getColumnIndexOrThrow(Telephony.Threads._ID)
+                val dateIdx = it.getColumnIndexOrThrow(Telephony.Threads.DATE)
+                val msgCountIdx = it.getColumnIndexOrThrow(Telephony.Threads.MESSAGE_COUNT)
+                val recipientIdsIdx = it.getColumnIndexOrThrow(Telephony.Threads.RECIPIENT_IDS)
+                val snippetIdx = it.getColumnIndexOrThrow(Telephony.Threads.SNIPPET)
+                val readIdx = it.getColumnIndexOrThrow(Telephony.Threads.READ)
+
+                while (it.moveToNext()) {
+                    val threadId = it.getLong(idIdx)
+                    threadIds.add(threadId)
+                    threadRows.add(
+                        ThreadProviderRow(
+                            threadId = threadId,
+                            date = it.getLong(dateIdx),
+                            messageCount = it.getInt(msgCountIdx),
+                            recipientIds = it.getString(recipientIdsIdx) ?: "",
+                            snippet = it.getString(snippetIdx) ?: "",
+                            read = it.getInt(readIdx) == 1
+                        )
+                    )
+                }
+            }
+
+            val canonicalAddresses = loadCanonicalAddressMap()
+            val contactDetails = loadContactDetailMap()
+            val contactNames = contactDetails.mapValues { it.value.name }
+
+            // Batch query all unread messages in a single fast query
+            val unreadCounts = mutableMapOf<Long, Int>()
+            val latestUnreadMessage = mutableMapOf<Long, Pair<Long, String>>() // threadId -> (msgId, body)
+            try {
+                val unreadCursor = contentResolver.query(
+                    Telephony.Sms.Inbox.CONTENT_URI,
+                    arrayOf(Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.BODY),
+                    "${Telephony.Sms.READ} = 0",
+                    null,
+                    "${Telephony.Sms.DATE} DESC"
+                )
+                unreadCursor?.use { uCursor ->
+                    val idIdx = uCursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                    val tIdIdx = uCursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                    val bodyIdx = uCursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                    while (uCursor.moveToNext()) {
+                        val tId = uCursor.getLong(tIdIdx)
+                        val msgId = uCursor.getLong(idIdx)
+                        val body = uCursor.getString(bodyIdx) ?: ""
+                        unreadCounts[tId] = (unreadCounts[tId] ?: 0) + 1
+                        if (!latestUnreadMessage.containsKey(tId)) {
+                            latestUnreadMessage[tId] = Pair(msgId, body)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying unread batch", e)
+            }
+
+            val latestInboxMessage = mutableMapOf<Long, Pair<Long, String>>() // threadId -> (msgId, body)
+            val remainingInboxThreadIds = threadIds.toMutableSet()
+            try {
+                if (remainingInboxThreadIds.isNotEmpty()) {
+                    val inboxCursor = contentResolver.query(
+                        Telephony.Sms.Inbox.CONTENT_URI,
+                        arrayOf(Telephony.Sms._ID, Telephony.Sms.THREAD_ID, Telephony.Sms.BODY),
+                        null,
+                        null,
+                        "${Telephony.Sms.DATE} DESC"
+                    )
+                    inboxCursor?.use { iCursor ->
+                        val idIdx = iCursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                        val tIdIdx = iCursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                        val bodyIdx = iCursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                        while (iCursor.moveToNext() && remainingInboxThreadIds.isNotEmpty()) {
+                            val tId = iCursor.getLong(tIdIdx)
+                            if (remainingInboxThreadIds.remove(tId)) {
+                                latestInboxMessage[tId] = Pair(
+                                    iCursor.getLong(idIdx),
+                                    iCursor.getString(bodyIdx) ?: ""
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying latest inbox batch", e)
+            }
+
+            val metaIds = LinkedHashSet<Long>()
+            latestInboxMessage.values.forEach { metaIds.add(it.first) }
+            latestUnreadMessage.values.forEach { metaIds.add(it.first) }
+            val spamMetaMap = dbHelper.getSpamMetaMapForIds(metaIds)
+            val pendingSpamMarks = mutableListOf<SpamMetaWrite>()
+            val evaluatedActions = mutableMapOf<Long, FilterAction>()
+
+            val needsFilterEval =
+                latestInboxMessage.values.any { it.first !in spamMetaMap } ||
+                    latestUnreadMessage.values.any { it.first !in spamMetaMap }
+
+            var preparedRules: PreparedFilterRules? = null
+            var senderPrefs = emptyMap<String, SenderPreference>()
+            if (needsFilterEval) {
+                val cache = FilterRulesCache.getInstance(dbHelper)
+                preparedRules = cache.preparedRules()
+                senderPrefs = cache.senderPreferences()
+            }
+
+            fun resolveInboxAction(msgId: Long, address: String, body: String, isContact: Boolean): FilterAction {
+                evaluatedActions[msgId]?.let { return it }
+                val meta = spamMetaMap[msgId]
+                val action = if (meta != null) {
+                    if (userPreferences.noSpamForContacts && isContact && meta.action == FilterAction.SPAM) {
+                        FilterAction.NORMAL
+                    } else {
+                        meta.action
+                    }
+                } else {
+                    val prepared = preparedRules
+                    if (prepared == null) {
+                        FilterAction.NORMAL
+                    } else {
+                        val pref = senderPrefs[dbHelper.normalizeAddress(address)]
+                        val eval = SmsFilterEngine.evaluateMessage(
+                            sender = address,
+                            body = body,
+                            prepared = prepared,
+                            senderPreference = pref,
+                            isContact = isContact,
+                            noSpamForContacts = userPreferences.noSpamForContacts
+                        )
+                        if (eval.action != FilterAction.NORMAL) {
+                            pendingSpamMarks.add(
+                                SpamMetaWrite(
+                                    messageId = msgId,
+                                    address = address,
+                                    matchedRuleName = eval.matchedRuleName,
+                                    action = eval.action
+                                )
+                            )
+                        }
+                        eval.action
+                    }
+                }
+                evaluatedActions[msgId] = action
+                return action
+            }
+
+            val threadSubIds = mutableMapOf<Long, Int>()
+            val remainingThreadIdsForSub = threadIds.toMutableSet()
+            try {
+                if (remainingThreadIdsForSub.isNotEmpty()) {
+                    val subCursor = contentResolver.query(
+                        Telephony.Sms.CONTENT_URI,
+                        arrayOf(Telephony.Sms.THREAD_ID, Telephony.Sms.SUBSCRIPTION_ID),
+                        null, null,
+                        "${Telephony.Sms.DATE} DESC"
+                    )
+                    subCursor?.use { sCursor ->
+                        val tIdIdx = sCursor.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                        val subIdIdx = sCursor.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+                        while (sCursor.moveToNext() && remainingThreadIdsForSub.isNotEmpty()) {
+                            val tId = sCursor.getLong(tIdIdx)
+                            if (remainingThreadIdsForSub.remove(tId)) {
+                                val subId = if (subIdIdx >= 0 && !sCursor.isNull(subIdIdx)) {
+                                    sCursor.getInt(subIdIdx)
+                                } else {
+                                    SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                                }
+                                threadSubIds[tId] = subId
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying thread SIM subscriptions", e)
+            }
+
+            for (row in threadRows) {
+                val threadId = row.threadId
+                val address = resolveRecipientAddress(row.recipientIds, canonicalAddresses)
+                val contactDetail = PhoneNumberKeys.lookupValue(contactDetails, address)
+                val contactName = contactDetail?.name ?: PhoneNumberKeys.lookup(contactNames, address)
+                val isContact = !contactName.isNullOrBlank()
+                val photoUri = contactDetail?.photoUri
+                val contactLookupUri = contactDetail?.lookupUri
+
+                val unreadCount = unreadCounts[threadId] ?: 0
+                val lastInbox = latestInboxMessage[threadId]
+                val lastMessageAction = if (lastInbox != null) {
+                    resolveInboxAction(lastInbox.first, address, lastInbox.second, isContact)
+                } else {
+                    FilterAction.NORMAL
+                }
+                val isUnreadSpam = unreadCount > 0 && latestUnreadMessage[threadId]?.let { latest ->
+                    resolveInboxAction(latest.first, address, latest.second, isContact) == FilterAction.SPAM
+                } == true
+
+                if (IncomingSmsPolicy.isGhostConversation(address, row.snippet)) {
+                    continue
+                }
+
+                val subId = threadSubIds[threadId] ?: SubscriptionManager.INVALID_SUBSCRIPTION_ID
+
+                threads.add(
+                    ConversationThread(
+                        threadId = threadId,
+                        address = address,
+                        contactName = contactName,
+                        snippet = row.snippet,
+                        date = row.date,
+                        messageCount = row.messageCount,
+                        unreadCount = unreadCount,
+                        hasSpam = lastMessageAction == FilterAction.SPAM || isUnreadSpam,
+                        isUnreadSpam = isUnreadSpam,
+                        lastMessageAction = lastMessageAction,
+                        subId = subId,
+                        photoUri = photoUri,
+                        contactLookupUri = contactLookupUri
+                    )
+                )
+            }
+
+            if (pendingSpamMarks.isNotEmpty()) {
+                dbHelper.saveMessagesFilterMeta(pendingSpamMarks)
+            }
+            if (threadsCursorOk) {
+                dbHelper.replaceCachedThreads(threads)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading threads", e)
+        }
+
+        threads
+    }
+
+    suspend fun getMessagesForThread(
+        threadId: Long,
+        address: String,
+        beforeDate: Long? = null,
+        limit: Int = 100
+    ): List<SmsMessage> = withContext(Dispatchers.IO) {
+        val messages = mutableListOf<SmsMessage>()
+        val contentResolver = context.contentResolver
+        val uri = Telephony.Sms.CONTENT_URI
+
+        val projection = arrayOf(
+            Telephony.Sms._ID,
+            Telephony.Sms.THREAD_ID,
+            Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY,
+            Telephony.Sms.DATE,
+            Telephony.Sms.TYPE,
+            Telephony.Sms.READ,
+            Telephony.Sms.STATUS,
+            Telephony.Sms.SUBSCRIPTION_ID
+        )
+
+        val effectiveThreadId = if (threadId <= 0 && address.isNotBlank()) {
+            getOrCreateThreadId(address)
+        } else {
+            threadId
+        }
+
+        val selection: String
+        val selectionArgs: Array<String>
+        if (effectiveThreadId > 0) {
+            if (beforeDate != null) {
+                selection = "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.DATE} < ?"
+                selectionArgs = arrayOf(effectiveThreadId.toString(), beforeDate.toString())
+            } else {
+                selection = "${Telephony.Sms.THREAD_ID} = ?"
+                selectionArgs = arrayOf(effectiveThreadId.toString())
+            }
+        } else {
+            val candidateAddrs = (PhoneNumberKeys.keys(address) + address).filter { it.isNotBlank() }.distinct()
+            val placeholders = candidateAddrs.joinToString(",") { "?" }
+            if (beforeDate != null) {
+                selection = "${Telephony.Sms.ADDRESS} IN ($placeholders) AND ${Telephony.Sms.DATE} < ?"
+                selectionArgs = (candidateAddrs + beforeDate.toString()).toTypedArray()
+            } else {
+                selection = "${Telephony.Sms.ADDRESS} IN ($placeholders)"
+                selectionArgs = candidateAddrs.toTypedArray()
+            }
+        }
+
+        try {
+            val cursor = contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                "${Telephony.Sms.DATE} DESC"
+            )
+
+            val spamMeta = dbHelper.getSpamMetaMapForThread(address)
+            val cache = FilterRulesCache.getInstance(dbHelper)
+            val preparedRules = cache.preparedRules()
+            val senderPref = cache.senderPreference(address)
+            val pendingSpamMarks = mutableListOf<SpamMetaWrite>()
+            val isContact = !resolveContactName(address).isNullOrBlank()
+
+            cursor?.use {
+                val idIdx = it.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val threadIdIdx = it.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                val addrIdx = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val bodyIdx = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIdx = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val typeIdx = it.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val readIdx = it.getColumnIndexOrThrow(Telephony.Sms.READ)
+                val statusIdx = it.getColumnIndexOrThrow(Telephony.Sms.STATUS)
+                val subIdIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+
+                while (it.moveToNext() && messages.size < limit) {
+                    val msgId = it.getLong(idIdx)
+                    val tId = it.getLong(threadIdIdx)
+                    val addr = it.getString(addrIdx) ?: address
+                    val body = it.getString(bodyIdx) ?: ""
+                    val date = it.getLong(dateIdx)
+                    val type = it.getInt(typeIdx)
+                    val read = it.getInt(readIdx) == 1
+                    val status = it.getInt(statusIdx)
+                    val subId = if (subIdIdx >= 0 && !it.isNull(subIdIdx)) {
+                        it.getInt(subIdIdx)
+                    } else {
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                    }
+
+                    if (IncomingSmsPolicy.isGhostConversation(addr, body)) {
+                        continue
+                    }
+
+                    val meta = spamMeta[msgId]
+                    val isSpam: Boolean
+                    val matchedRule: String?
+                    val isRevealed: Boolean
+
+                    if (meta != null) {
+                        isSpam = if (userPreferences.noSpamForContacts && isContact) false else meta.action == FilterAction.SPAM
+                        matchedRule = meta.matchedRuleName
+                        isRevealed = meta.isRevealed
+                    } else {
+                        if (type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
+                            val eval = SmsFilterEngine.evaluateMessage(
+                                sender = addr,
+                                body = body,
+                                prepared = preparedRules,
+                                senderPreference = senderPref,
+                                isContact = isContact,
+                                noSpamForContacts = userPreferences.noSpamForContacts
+                            )
+                            isSpam = eval.action == FilterAction.SPAM
+                            matchedRule = eval.matchedRuleName
+                            isRevealed = false
+                            if (eval.action != FilterAction.NORMAL) {
+                                pendingSpamMarks.add(
+                                    SpamMetaWrite(
+                                        messageId = msgId,
+                                        address = addr,
+                                        matchedRuleName = matchedRule,
+                                        action = eval.action
+                                    )
+                                )
+                            }
+                        } else {
+                            isSpam = false
+                            matchedRule = null
+                            isRevealed = false
+                        }
+                    }
+
+                    messages.add(
+                        SmsMessage(
+                            id = msgId,
+                            threadId = tId,
+                            address = addr,
+                            body = body,
+                            date = date,
+                            type = type,
+                            read = read,
+                            isSpam = isSpam,
+                            matchedRuleName = matchedRule,
+                            isRevealed = isRevealed,
+                            status = status,
+                            subId = subId
+                        )
+                    )
+                }
+            }
+
+            if (pendingSpamMarks.isNotEmpty()) {
+                dbHelper.saveMessagesFilterMeta(pendingSpamMarks)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading messages for thread $threadId", e)
+        }
+
+        messages.reverse()
+        messages
+    }
+
+    private fun getLatestMessageSubId(address: String): Int? {
+        try {
+            val cursor = context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms.SUBSCRIPTION_ID),
+                "${Telephony.Sms.ADDRESS} = ?",
+                arrayOf(address),
+                "${Telephony.Sms.DATE} DESC"
+            )
+            cursor?.use {
+                val subIdIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+                if (subIdIdx >= 0 && it.moveToFirst() && !it.isNull(subIdIdx)) {
+                    val id = it.getInt(subIdIdx)
+                    if (id != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        return id
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not query latest message subId for ${PhoneNumberKeys.redact(address)}", e)
+        }
+        return null
+    }
+
+    suspend fun sendSms(
+        address: String,
+        body: String,
+        subscriptionId: Int? = null
+    ): SendSmsResult = withContext(Dispatchers.IO) {
+        if (address.isBlank() || body.isBlank()) {
+            return@withContext SendSmsResult(sent = false, storedInProvider = false)
+        }
+
+        val targetSubId = if (subscriptionId != null && subscriptionId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            subscriptionId
+        } else {
+            val senderPref = dbHelper.getSenderPreference(address)
+            val prefSetting = senderPref?.preferredSubId ?: PreferredSimMode.AUTO
+            val latestSubId = getLatestMessageSubId(address)
+            simRepository.resolveOutgoingSubId(prefSetting, latestSubId)
+        }
+
+        val smsManager = smsManager(targetSubId)
+        val parts = try {
+            smsManager.divideMessage(body)
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not divide message for ${PhoneNumberKeys.redact(address)}", e)
+            return@withContext SendSmsResult(sent = false, storedInProvider = false)
+        }
+
+        // Insert the Sent row first so the receiver can track STATUS per message.
+        var messageId = -1L
+        val storedInProvider = try {
+            val cv = ContentValues().apply {
+                put(Telephony.Sms.ADDRESS, address)
+                put(Telephony.Sms.BODY, body)
+                put(Telephony.Sms.DATE, System.currentTimeMillis())
+                put(Telephony.Sms.READ, 1)
+                put(Telephony.Sms.TYPE, Telephony.Sms.MESSAGE_TYPE_SENT)
+                put(Telephony.Sms.STATUS, Telephony.Sms.STATUS_PENDING)
+                putDefaultSmsSubscription(this, targetSubId)
+            }
+            val uri = context.contentResolver.insert(Telephony.Sms.Sent.CONTENT_URI, cv)
+            messageId = uri?.lastPathSegment?.toLongOrNull() ?: -1L
+            uri != null
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not store outgoing SMS in provider for ${PhoneNumberKeys.redact(address)}", e)
+            false
+        }
+
+        val token = sendTokenCounter.incrementAndGet()
+        val sentAck = SmsSendTracker.register(token, parts.size)
+        val partCount = parts.size
+
+        fun newIntent(action: String): Intent =
+            Intent(context, com.ramesh.sms.receiver.SmsSentReceiver::class.java).apply {
+                this.action = action
+                putExtra(SmsSentReceiver.EXTRA_SEND_TOKEN, token)
+                putExtra(SmsSentReceiver.EXTRA_MESSAGE_ID, messageId)
+                putExtra(SmsSentReceiver.EXTRA_PART_COUNT, partCount)
+                putExtra(SmsSentReceiver.EXTRA_ADDRESS, address)
+            }
+
+        val sentIntents = parts.map {
+            PendingIntent.getBroadcast(
+                context,
+                uniqueRequestCode(),
+                newIntent(SmsSentReceiver.ACTION_SMS_SENT),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val deliveryIntents = parts.map {
+            PendingIntent.getBroadcast(
+                context,
+                uniqueRequestCode(),
+                newIntent(SmsSentReceiver.ACTION_SMS_DELIVERED),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+
+        try {
+            if (partCount > 1) {
+                smsManager.sendMultipartTextMessage(
+                    address,
+                    null,
+                    parts,
+                    ArrayList(sentIntents),
+                    ArrayList(deliveryIntents)
+                )
+            } else {
+                smsManager.sendTextMessage(address, null, body, sentIntents[0], deliveryIntents[0])
+            }
+        } catch (e: Exception) {
+            SmsSendTracker.cancel(token)
+            Log.e(TAG, "Failed to dispatch SMS to ${PhoneNumberKeys.redact(address)}", e)
+            return@withContext SendSmsResult(sent = false, storedInProvider = storedInProvider)
+        }
+
+        // Wait for radio-level acknowledgement; carriers normally ack within seconds.
+        val confirmed = runCatching { withTimeoutOrNull(SEND_ACK_TIMEOUT_MS) { sentAck.await() } }.getOrNull() == true
+
+        SendSmsResult(sent = confirmed, storedInProvider = storedInProvider)
+    }
+
+    suspend fun markThreadRead(threadId: Long) = withContext(Dispatchers.IO) {
+        markThreadsRead(listOf(threadId))
+    }
+
+    suspend fun markThreadsRead(threadIds: Collection<Long>) = withContext(Dispatchers.IO) {
+        if (threadIds.isEmpty()) return@withContext
+        val ids = threadIds.distinct()
+        val values = readAndSeenValues()
+        for (threadId in ids) {
+            try {
+                val convUri = ContentUris.withAppendedId(
+                    Telephony.MmsSms.CONTENT_CONVERSATIONS_URI,
+                    threadId
+                )
+                context.contentResolver.update(convUri, values, "${Telephony.Sms.READ} = 0", null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to mark conversation read $threadId", e)
+            }
+        }
+        try {
+            val placeholders = ids.joinToString(",") { "?" }
+            val args = ids.map { it.toString() }.toTypedArray()
+            context.contentResolver.update(
+                Telephony.Sms.CONTENT_URI,
+                values,
+                "${Telephony.Sms.THREAD_ID} IN ($placeholders) AND ${Telephony.Sms.READ} = 0",
+                args
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to mark threads read $ids", e)
+        }
+        val notificationHelper = NotificationHelper.getInstance(context)
+        ids.forEach { notificationHelper.cancelNotification(it) }
+    }
+
+    suspend fun markAllMessagesRead() = withContext(Dispatchers.IO) {
+        try {
+            context.contentResolver.update(
+                Telephony.Sms.CONTENT_URI,
+                readAndSeenValues(),
+                "${Telephony.Sms.READ} = 0",
+                null
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to mark all messages read", e)
+        }
+    }
+
+    private fun readAndSeenValues(): ContentValues {
+        return ContentValues().apply {
+            put(Telephony.Sms.READ, 1)
+            put(Telephony.Sms.SEEN, 1)
+        }
+    }
+
+    suspend fun deleteMessage(messageId: Long): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val uri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, messageId)
+            val rows = context.contentResolver.delete(uri, null, null)
+            if (rows > 0) {
+                dbHelper.deleteSpamMetaForMessageIds(listOf(messageId))
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete message $messageId", e)
+            false
+        }
+    }
+
+    suspend fun revealSpamMessage(messageId: Long, isRevealed: Boolean) = withContext(Dispatchers.IO) {
+        dbHelper.setMessageRevealed(messageId, isRevealed)
+    }
+
+    suspend fun markMessageNotSpam(messageId: Long) = withContext(Dispatchers.IO) {
+        dbHelper.unmarkSpam(messageId)
+    }
+
+    private fun loadCanonicalAddressMap(): Map<String, String> {
+        val cached = canonicalCache
+        val now = System.currentTimeMillis()
+        if (cached != null && now - cached.loadedAt < LOOKUP_CACHE_TTL_MS) {
+            return cached.values
+        }
+        val map = HashMap<String, String>()
+        try {
+            val uri = Uri.parse("content://mms-sms/canonical-addresses")
+            val cursor = context.contentResolver.query(
+                uri,
+                arrayOf("_id", "address"),
+                null, null, null
+            )
+            cursor?.use {
+                val idIdx = it.getColumnIndex("_id")
+                val addrIdx = it.getColumnIndex("address")
+                if (idIdx < 0 || addrIdx < 0) return map
+                while (it.moveToNext()) {
+                    val id = it.getString(idIdx) ?: continue
+                    map[id] = it.getString(addrIdx) ?: ""
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Batch canonical-address query failed, falling back", e)
+        }
+        canonicalCache = CachedLookupMap(now, map)
+        return map
+    }
+
+    private fun loadContactDetailMap(): Map<String, ContactDetail> {
+        val cached = contactDetailCache
+        val now = System.currentTimeMillis()
+        if (cached != null && now - cached.loadedAt < LOOKUP_CACHE_TTL_MS) {
+            return cached.values
+        }
+        val map = HashMap<String, ContactDetail>()
+        try {
+            val cursor = context.contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                arrayOf(
+                    ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                    ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY,
+                    ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                    ContactsContract.CommonDataKinds.Phone.NUMBER,
+                    ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI,
+                    ContactsContract.CommonDataKinds.Phone.PHOTO_URI
+                ),
+                null, null, null
+            )
+            cursor?.use {
+                val contactIdIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.CONTACT_ID)
+                val lookupKeyIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LOOKUP_KEY)
+                val nameIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val thumbIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+                val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_URI)
+
+                while (it.moveToNext()) {
+                    val name = if (nameIdx >= 0) it.getString(nameIdx) else null
+                    val number = if (numIdx >= 0) it.getString(numIdx) else null
+                    if (name.isNullOrBlank() || number.isNullOrBlank()) continue
+
+                    val contactId = if (contactIdIdx >= 0 && !it.isNull(contactIdIdx)) it.getLong(contactIdIdx) else null
+                    val lookupKey = if (lookupKeyIdx >= 0) it.getString(lookupKeyIdx) else null
+                    val lookupUri = if (contactId != null && !lookupKey.isNullOrBlank()) {
+                        ContactsContract.Contacts.getLookupUri(contactId, lookupKey)?.toString()
+                    } else null
+
+                    val photoUri = when {
+                        thumbIdx >= 0 && !it.isNull(thumbIdx) -> it.getString(thumbIdx)
+                        photoIdx >= 0 && !it.isNull(photoIdx) -> it.getString(photoIdx)
+                        else -> null
+                    }
+
+                    val detail = ContactDetail(name, photoUri, lookupUri)
+                    for (key in PhoneNumberKeys.keys(number)) {
+                        map.putIfAbsent(key, detail)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Batch contact query failed, falling back", e)
+        }
+        contactDetailCache = CachedLookupMap(now, map)
+        return map
+    }
+
+    private fun loadContactNameMap(): Map<String, String> {
+        return loadContactDetailMap().mapValues { it.value.name }
+    }
+
+    private fun resolveRecipientAddress(
+        recipientIds: String,
+        canonicalAddresses: Map<String, String> = emptyMap()
+    ): String {
+        if (recipientIds.isBlank()) return ""
+        val ids = recipientIds.split(" ")
+        for (id in ids) {
+            if (id.isBlank()) continue
+            val cached = canonicalAddresses[id]
+            if (!cached.isNullOrBlank()) return cached
+            try {
+                val uri = Uri.parse("content://mms-sms/canonical-address/$id")
+                val cursor = context.contentResolver.query(uri, null, null, null, null)
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        return it.getString(0) ?: ""
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "canonical-address lookup failed", e)
+            }
+        }
+        return recipientIds
+    }
+
+    suspend fun deleteThread(threadId: Long): Boolean = deleteThreads(listOf(threadId))
+
+    suspend fun deleteThreads(threadIds: Collection<Long>): Boolean = withContext(Dispatchers.IO) {
+        if (threadIds.isEmpty()) return@withContext false
+        val ids = threadIds.distinct()
+        val cachedAddresses = dbHelper.getCachedThreadAddresses(ids)
+        val addresses = LinkedHashSet<String>()
+        for (id in ids) {
+            val cached = cachedAddresses[id]?.takeIf { it.isNotBlank() }
+            val address = cached ?: lookupSmsAddressForThread(id)
+            if (address.isNotBlank()) addresses.add(address)
+        }
+
+        var smsOk = true
+        try {
+            for (chunk in ids.chunked(SQLITE_IN_CHUNK_SIZE)) {
+                val placeholders = chunk.joinToString(",") { "?" }
+                val args = chunk.map { it.toString() }.toTypedArray()
+                context.contentResolver.delete(
+                    Telephony.Sms.CONTENT_URI,
+                    "${Telephony.Sms.THREAD_ID} IN ($placeholders)",
+                    args
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete SMS for threads $ids", e)
+            smsOk = false
+        }
+
+        for (id in ids) {
+            try {
+                val threadUri = ContentUris.withAppendedId(Telephony.Threads.CONTENT_URI, id)
+                context.contentResolver.delete(threadUri, null, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete thread record $id", e)
+            }
+        }
+
+        for (address in addresses) {
+            try {
+                dbHelper.deleteSpamMetaForAddress(address)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to delete spam meta for ${PhoneNumberKeys.redact(address)}", e)
+            }
+        }
+
+        smsOk
+    }
+
+    private fun lookupSmsAddressForThread(threadId: Long): String {
+        return try {
+            val cursor = context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms.ADDRESS),
+                "${Telephony.Sms.THREAD_ID} = ?",
+                arrayOf(threadId.toString()),
+                "${Telephony.Sms.DATE} DESC"
+            )
+            cursor?.use {
+                val addrIdx = it.getColumnIndex(Telephony.Sms.ADDRESS)
+                if (addrIdx >= 0 && it.moveToFirst()) {
+                    it.getString(addrIdx) ?: ""
+                } else {
+                    ""
+                }
+            } ?: ""
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not look up address for thread $threadId", e)
+            ""
+        }
+    }
+
+    suspend fun searchAllMessages(query: String): List<SearchMessageResult> = withContext(Dispatchers.IO) {
+        val trimmedQuery = query.trim()
+        if (trimmedQuery.length < 2) return@withContext emptyList()
+        val results = mutableListOf<SearchMessageResult>()
+        val contentResolver = context.contentResolver
+
+        val uri = Telephony.Sms.CONTENT_URI.buildUpon()
+            // Push the cap into the provider query instead of scanning the whole inbox.
+            // Headroom above SEARCH_RESULT_CAP absorbs ghost/sent rows filtered in Kotlin.
+            .appendQueryParameter("limit", (SEARCH_RESULT_LIMIT * 4).toString())
+            .build()
+        val projection = arrayOf(
+            Telephony.Sms._ID,
+            Telephony.Sms.THREAD_ID,
+            Telephony.Sms.ADDRESS,
+            Telephony.Sms.BODY,
+            Telephony.Sms.DATE,
+            Telephony.Sms.READ,
+            Telephony.Sms.TYPE,
+            Telephony.Sms.SUBSCRIPTION_ID
+        )
+
+        val selection = "${Telephony.Sms.BODY} LIKE ? OR ${Telephony.Sms.ADDRESS} LIKE ?"
+        val selectionArgs = arrayOf("%$trimmedQuery%", "%$trimmedQuery%")
+
+        try {
+            val contactDetails = loadContactDetailMap()
+            val contactNames = contactDetails.mapValues { it.value.name }
+            val cursor = contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                "${Telephony.Sms.DATE} DESC"
+            )
+
+            val hits = mutableListOf<SearchHit>()
+            cursor?.use {
+                val idIdx = it.getColumnIndexOrThrow(Telephony.Sms._ID)
+                val threadIdIdx = it.getColumnIndexOrThrow(Telephony.Sms.THREAD_ID)
+                val addrIdx = it.getColumnIndexOrThrow(Telephony.Sms.ADDRESS)
+                val bodyIdx = it.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                val dateIdx = it.getColumnIndexOrThrow(Telephony.Sms.DATE)
+                val readIdx = it.getColumnIndexOrThrow(Telephony.Sms.READ)
+                val typeIdx = it.getColumnIndexOrThrow(Telephony.Sms.TYPE)
+                val subIdIdx = it.getColumnIndex(Telephony.Sms.SUBSCRIPTION_ID)
+
+                while (it.moveToNext() && hits.size < SEARCH_RESULT_LIMIT) {
+                    var threadId = it.getLong(threadIdIdx)
+                    val address = it.getString(addrIdx) ?: ""
+                    val body = it.getString(bodyIdx) ?: ""
+                    val subId = if (subIdIdx >= 0 && !it.isNull(subIdIdx)) {
+                        it.getInt(subIdIdx)
+                    } else {
+                        SubscriptionManager.INVALID_SUBSCRIPTION_ID
+                    }
+                    if (IncomingSmsPolicy.isGhostConversation(address, body)) {
+                        continue
+                    }
+                    if (threadId <= 0 && address.isNotBlank()) {
+                        threadId = Telephony.Threads.getOrCreateThreadId(context, address)
+                    }
+                    hits.add(
+                        SearchHit(
+                            messageId = it.getLong(idIdx),
+                            threadId = threadId,
+                            address = address,
+                            body = body,
+                            date = it.getLong(dateIdx),
+                            read = it.getInt(readIdx) == 1,
+                            type = it.getInt(typeIdx),
+                            subId = subId
+                        )
+                    )
+                }
+            }
+
+            val spamMetaMap = dbHelper.getSpamMetaMapForIds(hits.map { it.messageId })
+            val pendingSpamMarks = mutableListOf<SpamMetaWrite>()
+            val needsFilterEval = hits.any { hit ->
+                hit.type == Telephony.Sms.MESSAGE_TYPE_INBOX && hit.messageId !in spamMetaMap
+            }
+
+            var preparedRules: PreparedFilterRules? = null
+            var senderPrefs = emptyMap<String, SenderPreference>()
+            if (needsFilterEval) {
+                val cache = FilterRulesCache.getInstance(dbHelper)
+                preparedRules = cache.preparedRules()
+                senderPrefs = cache.senderPreferences()
+            }
+
+            for (hit in hits) {
+                val detail = PhoneNumberKeys.lookupValue(contactDetails, hit.address)
+                val contactName = detail?.name ?: PhoneNumberKeys.lookup(contactNames, hit.address)
+                val isContact = !contactName.isNullOrBlank()
+
+                val meta = spamMetaMap[hit.messageId]
+                val isSpam = if (meta != null) {
+                    if (userPreferences.noSpamForContacts && isContact) false else meta.action == FilterAction.SPAM
+                } else if (hit.type == Telephony.Sms.MESSAGE_TYPE_INBOX) {
+                    val prepared = preparedRules
+                    if (prepared == null) {
+                        false
+                    } else {
+                        val pref = senderPrefs[dbHelper.normalizeAddress(hit.address)]
+                        val eval = SmsFilterEngine.evaluateMessage(
+                            sender = hit.address,
+                            body = hit.body,
+                            prepared = prepared,
+                            senderPreference = pref,
+                            isContact = isContact,
+                            noSpamForContacts = userPreferences.noSpamForContacts
+                        )
+                        if (eval.action != FilterAction.NORMAL) {
+                            pendingSpamMarks.add(
+                                SpamMetaWrite(
+                                    messageId = hit.messageId,
+                                    address = hit.address,
+                                    matchedRuleName = eval.matchedRuleName,
+                                    action = eval.action
+                                )
+                            )
+                        }
+                        eval.action == FilterAction.SPAM
+                    }
+                } else {
+                    false
+                }
+
+                results.add(
+                    SearchMessageResult(
+                        messageId = hit.messageId,
+                        threadId = hit.threadId,
+                        address = hit.address,
+                        contactName = contactName,
+                        body = hit.body,
+                        date = hit.date,
+                        read = hit.read,
+                        type = hit.type,
+                        isSpam = isSpam,
+                        subId = hit.subId,
+                        photoUri = detail?.photoUri,
+                        contactLookupUri = detail?.lookupUri
+                    )
+                )
+            }
+
+            if (pendingSpamMarks.isNotEmpty()) {
+                dbHelper.saveMessagesFilterMeta(pendingSpamMarks)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error searching all messages for query: $query", e)
+        }
+
+        results
+    }
+
+    suspend fun searchContacts(query: String): List<ContactItem> = withContext(Dispatchers.IO) {
+        val cleanQuery = PhoneNumberKeys.toLatinDigits(query).trim()
+        val contacts = mutableListOf<ContactItem>()
+        val seenKeys = mutableSetOf<String>()
+
+        // 1. Get cached conversations to enrich matching contacts with threadId / snippet / photo
+        val cachedThreads = try { getCachedThreads() } catch (_: Exception) { emptyList() }
+        val threadsByCanonical = cachedThreads.associateBy { PhoneNumberKeys.canonical(it.address) }
+
+        if (cleanQuery.isBlank()) {
+            // Return top contacts alphabetically
+            try {
+                val cursor = context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+                    ),
+                    null,
+                    null,
+                    "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+                )
+                cursor?.use {
+                    val nameIdx = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val numIdx = it.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    val photoIdx = it.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+                    while (it.moveToNext() && contacts.size < 50) {
+                        val name = it.getString(nameIdx) ?: ""
+                        val number = (it.getString(numIdx) ?: "").replace(" ", "")
+                        val photoUri = if (photoIdx >= 0 && !it.isNull(photoIdx)) it.getString(photoIdx) else null
+                        val key = PhoneNumberKeys.canonical(number)
+                        if (number.isNotBlank() && seenKeys.add(key)) {
+                            val thread = threadsByCanonical[key]
+                            contacts.add(
+                                ContactItem(
+                                    name = name,
+                                    number = number,
+                                    photoUri = photoUri ?: thread?.photoUri,
+                                    threadId = thread?.threadId,
+                                    snippet = thread?.snippet
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error listing all contacts", e)
+            }
+            return@withContext contacts
+        }
+
+        // 2. Query ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI (Native phone matching)
+        try {
+            val filterUri = Uri.withAppendedPath(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI,
+                Uri.encode(cleanQuery)
+            )
+            val projection = arrayOf(
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER,
+                ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+            )
+            context.contentResolver.query(
+                filterUri,
+                projection,
+                null,
+                null,
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} ASC"
+            )?.use { cursor ->
+                val nameIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                val numIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                val photoIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+                while (cursor.moveToNext() && contacts.size < 50) {
+                    val name = cursor.getString(nameIdx) ?: ""
+                    val rawNumber = cursor.getString(numIdx) ?: ""
+                    val number = rawNumber.replace(" ", "")
+                    val photoUri = if (photoIdx >= 0 && !cursor.isNull(photoIdx)) cursor.getString(photoIdx) else null
+                    val key = PhoneNumberKeys.canonical(number)
+                    if (number.isNotBlank() && seenKeys.add(key)) {
+                        val thread = threadsByCanonical[key]
+                        contacts.add(
+                            ContactItem(
+                                name = name,
+                                number = number,
+                                photoUri = photoUri ?: thread?.photoUri,
+                                threadId = thread?.threadId,
+                                snippet = thread?.snippet
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Phone CONTENT_FILTER_URI query failed", e)
+        }
+
+        // 3. Fallback LIKE query on ContactsContract if filter returned empty or query has digits
+        val digits = PhoneNumberKeys.digitsOnly(cleanQuery)
+        if (contacts.isEmpty()) {
+            val candidateKeys = if (digits.length >= 3) {
+                (PhoneNumberKeys.keys(digits) + cleanQuery).distinct()
+            } else {
+                listOf(cleanQuery)
+            }
+            val selectionClauses = candidateKeys.joinToString(" OR ") {
+                "${ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME} LIKE ? OR ${ContactsContract.CommonDataKinds.Phone.NUMBER} LIKE ?"
+            }
+            val selectionArgs = candidateKeys.flatMap { listOf("%$it%", "%$it%") }.toTypedArray()
+
+            try {
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(
+                        ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        ContactsContract.CommonDataKinds.Phone.NUMBER,
+                        ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI
+                    ),
+                    selectionClauses,
+                    selectionArgs,
+                    null
+                )?.use { cursor ->
+                    val nameIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME)
+                    val numIdx = cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    val photoIdx = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.PHOTO_THUMBNAIL_URI)
+                    while (cursor.moveToNext() && contacts.size < 50) {
+                        val name = cursor.getString(nameIdx) ?: ""
+                        val num = (cursor.getString(numIdx) ?: "").replace(" ", "")
+                        val photoUri = if (photoIdx >= 0 && !cursor.isNull(photoIdx)) cursor.getString(photoIdx) else null
+                        val key = PhoneNumberKeys.canonical(num)
+                        if (num.isNotBlank() && seenKeys.add(key)) {
+                            val thread = threadsByCanonical[key]
+                            contacts.add(
+                                ContactItem(
+                                    name = name,
+                                    number = num,
+                                    photoUri = photoUri ?: thread?.photoUri,
+                                    threadId = thread?.threadId,
+                                    snippet = thread?.snippet
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Fallback contact search failed", e)
+            }
+        }
+
+        // 4. Also search cached threads to find active conversations with unsaved numbers or matching snippets
+        for (thread in cachedThreads) {
+            val threadKey = PhoneNumberKeys.canonical(thread.address)
+            if (threadKey in seenKeys) continue
+
+            val matchesAddress = (digits.isNotBlank() && PhoneNumberKeys.keys(thread.address).any { it.contains(digits) }) ||
+                thread.address.contains(cleanQuery, ignoreCase = true)
+            val matchesName = thread.contactName?.contains(cleanQuery, ignoreCase = true) == true
+
+            if (matchesAddress || matchesName) {
+                seenKeys.add(threadKey)
+                contacts.add(
+                    ContactItem(
+                        name = thread.contactName ?: thread.address,
+                        number = thread.address,
+                        photoUri = thread.photoUri,
+                        threadId = thread.threadId,
+                        snippet = thread.snippet
+                    )
+                )
+            }
+        }
+
+        contacts
+    }
+
+    suspend fun getOrCreateThreadId(address: String): Long = withContext(Dispatchers.IO) {
+        val sanitized = PhoneNumberKeys.sanitizeAddress(address)
+        if (sanitized.isBlank()) return@withContext 0L
+
+        // 1. Try system Telephony.Threads API
+        try {
+            val threadId = Telephony.Threads.getOrCreateThreadId(context, sanitized)
+            if (threadId > 0L) return@withContext threadId
+        } catch (e: Exception) {
+            Log.w(TAG, "Telephony.Threads.getOrCreateThreadId failed for ${PhoneNumberKeys.redact(sanitized)}", e)
+        }
+
+        // 2. Fallback: Query Telephony.Sms directly for an existing thread with this address
+        try {
+            val candidateAddresses = (PhoneNumberKeys.keys(sanitized) + sanitized + address).filter { it.isNotBlank() }.distinct()
+            val placeholders = candidateAddresses.joinToString(",") { "?" }
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(Telephony.Sms.THREAD_ID),
+                "${Telephony.Sms.ADDRESS} IN ($placeholders)",
+                candidateAddresses.toTypedArray(),
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { cursor ->
+                val tIdIdx = cursor.getColumnIndex(Telephony.Sms.THREAD_ID)
+                if (tIdIdx >= 0 && cursor.moveToFirst()) {
+                    val foundId = cursor.getLong(tIdIdx)
+                    if (foundId > 0L) return@withContext foundId
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Fallback thread ID lookup failed for ${PhoneNumberKeys.redact(sanitized)}", e)
+        }
+
+        0L
+    }
+
+    fun invalidateLookupCaches() {
+        canonicalCache = null
+        contactDetailCache = null
+    }
+
+    companion object {
+        /** How long to wait for the radio-level sent acknowledgement before reporting failure. */
+        private const val SEND_ACK_TIMEOUT_MS = 20_000L
+
+        /** Maximum number of matching rows processed from search. */
+        private const val SEARCH_RESULT_LIMIT = 250
+
+        private val sendTokenCounter = AtomicLong(System.nanoTime())
+
+        private fun uniqueRequestCode(): Int =
+            (sendTokenCounter.incrementAndGet() and 0x7FFFFFFFL).toInt()
+    }
+
+    fun resolveContactDetail(phoneNumber: String): ContactDetail? {
+        if (phoneNumber.isBlank()) return null
+        PhoneNumberKeys.lookupValue(loadContactDetailMap(), phoneNumber)?.let { return it }
+        try {
+            val uri = Uri.withAppendedPath(
+                ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                Uri.encode(phoneNumber)
+            )
+            val projection = arrayOf(
+                ContactsContract.PhoneLookup._ID,
+                ContactsContract.PhoneLookup.LOOKUP_KEY,
+                ContactsContract.PhoneLookup.DISPLAY_NAME,
+                ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI,
+                ContactsContract.PhoneLookup.PHOTO_URI
+            )
+            val cursor = context.contentResolver.query(uri, projection, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIdx = it.getColumnIndex(ContactsContract.PhoneLookup.DISPLAY_NAME)
+                    val idIdx = it.getColumnIndex(ContactsContract.PhoneLookup._ID)
+                    val keyIdx = it.getColumnIndex(ContactsContract.PhoneLookup.LOOKUP_KEY)
+                    val thumbIdx = it.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_THUMBNAIL_URI)
+                    val photoIdx = it.getColumnIndex(ContactsContract.PhoneLookup.PHOTO_URI)
+
+                    val name = if (nameIdx >= 0) it.getString(nameIdx) else null
+                    val contactId = if (idIdx >= 0 && !it.isNull(idIdx)) it.getLong(idIdx) else null
+                    val lookupKey = if (keyIdx >= 0) it.getString(keyIdx) else null
+                    val lookupUri = if (contactId != null && !lookupKey.isNullOrBlank()) {
+                        ContactsContract.Contacts.getLookupUri(contactId, lookupKey)?.toString()
+                    } else null
+
+                    val photoUri = when {
+                        thumbIdx >= 0 && !it.isNull(thumbIdx) -> it.getString(thumbIdx)
+                        photoIdx >= 0 && !it.isNull(photoIdx) -> it.getString(photoIdx)
+                        else -> null
+                    }
+
+                    if (!name.isNullOrBlank()) {
+                        return ContactDetail(name, photoUri, lookupUri)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "PhoneLookup query failed", e)
+        }
+        return null
+    }
+
+    fun resolveContactName(phoneNumber: String): String? {
+        return resolveContactDetail(phoneNumber)?.name
+    }
+
+    suspend fun getAllTabs(): List<SenderTab> = dbHelper.getAllTabs()
+
+    suspend fun createTab(name: String, addresses: Collection<String> = emptyList()): Long =
+        dbHelper.createTab(name, addresses)
+
+    suspend fun updateTabName(tabId: Long, newName: String): Boolean =
+        dbHelper.updateTabName(tabId, newName)
+
+    suspend fun updateTabOrder(tabIds: List<Long>): Boolean =
+        dbHelper.updateTabOrder(tabIds)
+
+    suspend fun deleteTab(tabId: Long): Boolean =
+        dbHelper.deleteTab(tabId)
+
+    suspend fun addSendersToTab(tabId: Long, addresses: Collection<String>): Boolean =
+        dbHelper.addSendersToTab(tabId, addresses)
+
+    suspend fun removeSendersFromTab(tabId: Long, addresses: Collection<String>): Boolean =
+        dbHelper.removeSendersFromTab(tabId, addresses)
+
+    suspend fun setTabSenders(tabId: Long, addresses: Collection<String>): Boolean =
+        dbHelper.setTabSenders(tabId, addresses)
+
+    suspend fun getTabsForSender(address: String): List<SenderTab> =
+        dbHelper.getTabsForSender(address)
+
+    suspend fun setSenderTabs(address: String, tabIds: Collection<Long>) =
+        dbHelper.setSenderTabs(address, tabIds)
+
+    suspend fun getSenderPreference(address: String): SenderPreference? =
+        dbHelper.getSenderPreference(address)
+
+    suspend fun updateSenderPreferredSubId(address: String, preferredSubId: Int) =
+        dbHelper.updateSenderPreferredSubId(address, preferredSubId)
+}
+
+data class SendSmsResult(
+    val sent: Boolean,
+    val storedInProvider: Boolean
+) {
+    companion object {
+        val NOT_SENT = SendSmsResult(sent = false, storedInProvider = false)
+    }
+}
+
+data class ContactDetail(
+    val name: String,
+    val photoUri: String? = null,
+    val lookupUri: String? = null
+)
+
+data class ContactItem(
+    val name: String,
+    val number: String,
+    val photoUri: String? = null,
+    val threadId: Long? = null,
+    val snippet: String? = null
+)
+
+private data class ThreadProviderRow(
+    val threadId: Long,
+    val date: Long,
+    val messageCount: Int,
+    val recipientIds: String,
+    val snippet: String,
+    val read: Boolean
+)
+
+private data class CachedLookupMap<T>(
+    val loadedAt: Long,
+    val values: Map<String, T>
+)
+
+private data class SearchHit(
+    val messageId: Long,
+    val threadId: Long,
+    val address: String,
+    val body: String,
+    val date: Long,
+    val read: Boolean,
+    val type: Int,
+    val subId: Int
+)
+
+private const val LOOKUP_CACHE_TTL_MS = 60_000L
+private const val SQLITE_IN_CHUNK_SIZE = 500
+
+@Volatile
+private var canonicalCache: CachedLookupMap<String>? = null
+
+@Volatile
+private var contactDetailCache: CachedLookupMap<ContactDetail>? = null
+

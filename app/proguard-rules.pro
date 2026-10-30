@@ -13,10 +13,10 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
--keep,includedescriptorclasses class com.miss.ga.**$$serializer { *; }
--keepclassmembers class com.miss.ga.** {
+-keep,includedescriptorclasses class com.ramesh.sms.**$$serializer { *; }
+-keepclassmembers class com.ramesh.sms.** {
     *** Companion;
 }
--keepclasseswithmembers class com.miss.ga.** {
+-keepclasseswithmembers class com.ramesh.sms.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
