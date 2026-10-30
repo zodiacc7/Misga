@@ -281,6 +281,43 @@ class SmsRepository(
                 return action
             }
 
+            // A conversation whose messages are all spam has nothing left to show; it must not
+            // surface as an empty row in the inbox or in a "not spam" filter tab.
+            val spamOnlyByThread = mutableMapOf<Long, Boolean>()
+            fun threadHasOnlySpam(threadId: Long, address: String, isContact: Boolean): Boolean {
+                spamOnlyByThread[threadId]?.let { return it }
+                var onlySpam = true
+                try {
+                    contentResolver.query(
+                        Telephony.Sms.Inbox.CONTENT_URI,
+                        arrayOf(Telephony.Sms._ID, Telephony.Sms.BODY),
+                        "${Telephony.Sms.THREAD_ID} = ?",
+                        arrayOf(threadId.toString()),
+                        null
+                    )?.use { spamCursor ->
+                        val idIdx = spamCursor.getColumnIndexOrThrow(Telephony.Sms._ID)
+                        val bodyIdx = spamCursor.getColumnIndexOrThrow(Telephony.Sms.BODY)
+                        while (spamCursor.moveToNext()) {
+                            val action = resolveInboxAction(
+                                spamCursor.getLong(idIdx),
+                                address,
+                                spamCursor.getString(bodyIdx) ?: "",
+                                isContact
+                            )
+                            if (action != FilterAction.SPAM) {
+                                onlySpam = false
+                                break
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error checking spam-only thread $threadId", e)
+                    onlySpam = false
+                }
+                spamOnlyByThread[threadId] = onlySpam
+                return onlySpam
+            }
+
             val threadSubIds = mutableMapOf<Long, Int>()
             val remainingThreadIdsForSub = threadIds.toMutableSet()
             try {
@@ -330,6 +367,8 @@ class SmsRepository(
                 val isUnreadSpam = unreadCount > 0 && latestUnreadMessage[threadId]?.let { latest ->
                     resolveInboxAction(latest.first, address, latest.second, isContact) == FilterAction.SPAM
                 } == true
+                val spamOnly = lastMessageAction == FilterAction.SPAM &&
+                    threadHasOnlySpam(threadId, address, isContact)
 
                 if (IncomingSmsPolicy.isGhostConversation(address, row.snippet)) {
                     continue
@@ -347,6 +386,7 @@ class SmsRepository(
                         messageCount = row.messageCount,
                         unreadCount = unreadCount,
                         hasSpam = lastMessageAction == FilterAction.SPAM || isUnreadSpam,
+                        spamOnly = spamOnly,
                         isUnreadSpam = isUnreadSpam,
                         lastMessageAction = lastMessageAction,
                         subId = subId,

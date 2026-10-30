@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState as animateFloat
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
@@ -69,6 +73,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,7 +85,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
@@ -88,6 +99,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -95,6 +111,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import com.ramesh.sms.ChatNav
@@ -108,27 +127,28 @@ import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
-import com.ramesh.sms.ui.components.CreateTabDialog
 import com.ramesh.sms.ui.components.CustomizationSheet
 import com.ramesh.sms.ui.components.DefaultSmsBanner
 import com.ramesh.sms.ui.components.DeleteTabDialog
-import com.ramesh.sms.ui.components.ManageTabSendersDialog
-import com.ramesh.sms.ui.components.RenameTabDialog
 import com.ramesh.sms.ui.components.SenderTabRow
 import com.ramesh.sms.ui.components.SimBadge
 import com.ramesh.sms.ui.components.SimFilterRow
-import com.ramesh.sms.ui.components.TabFilterDialog
-import com.ramesh.sms.ui.components.TabOptionsMenuSheet
+import com.ramesh.sms.ui.components.TabEditorDialog
+import com.ramesh.sms.ui.components.TabOptionsSheet
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.senderDisplayName
 import com.ramesh.sms.ui.util.contentAware
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+import com.ramesh.sms.ui.viewmodel.UNDO_DELETE_WINDOW_MILLIS
 import com.ramesh.sms.util.DefaultSmsAppHelper
 import java.util.Locale
 
 private val ListBottomFabPadding = 88.dp
 private val AvatarDividerInset = 78.dp
 private val NoSelectionIds: Set<Long> = emptySet()
+
+/** Sentinel used by the tab editor to mean "creating a brand new tab". */
+private const val NEW_TAB_ID = -1L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -168,22 +188,62 @@ fun ConversationsScreen(
     val hasMultipleSims = state.availableSims.size > 1
 
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
-    var showCreateTabDialog by remember { mutableStateOf(false) }
-    var tabToRename by remember { mutableStateOf<SenderTab?>(null) }
+    // null = editor closed, NEW_TAB_ID = creating a tab, otherwise the id of the tab being edited.
+    var tabEditorId by remember { mutableStateOf<Long?>(null) }
     var tabToDelete by remember { mutableStateOf<SenderTab?>(null) }
-    var tabToManageSenders by remember { mutableStateOf<SenderTab?>(null) }
     var tabForOptionsMenu by remember { mutableStateOf<SenderTab?>(null) }
-    var tabToEditFilters by remember { mutableStateOf<SenderTab?>(null) }
     var showAddToTabDialog by remember { mutableStateOf(false) }
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    // The search field is hidden behind a magnifier button until the user asks for it. A query
+    // that survived a trip to a chat keeps the field open, so results are never shown without it.
+    var isSearchOpen by remember { mutableStateOf(state.searchQuery.isNotBlank()) }
+    val searchFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(isSearchOpen) {
+        if (isSearchOpen) {
+            // Let the field enter the composition before asking for focus.
+            delay(120)
+            runCatching { searchFocusRequester.requestFocus() }
+        }
+    }
+    val swipeToDelete = AppearanceStore.current.swipeToDelete
+    val undoScope = rememberCoroutineScope()
+
+    // Deleting waits five seconds so the undo bar stays usable; nothing is lost if the user
+    // changes their mind.
+    val requestDeleteConversation: (ConversationThread) -> Unit = { thread ->
+        viewModel.requestDeleteConversation(thread.threadId)
+        undoScope.launch {
+            val dismissJob = launch {
+                delay(UNDO_DELETE_WINDOW_MILLIS)
+                snackbarHostState.currentSnackbarData?.dismiss()
+            }
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.inbox_conversation_deleted),
+                actionLabel = context.getString(R.string.inbox_undo),
+                duration = SnackbarDuration.Indefinite
+            )
+            dismissJob.cancel()
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoDeleteConversation(thread.threadId)
+            }
+        }
+    }
 
     BackHandler(enabled = isSelectionMode) {
         viewModel.clearSelection()
     }
+    BackHandler(enabled = isSearchOpen && !isSelectionMode) {
+        viewModel.onSearchQueryChanged("")
+        isSearchOpen = false
+    }
 
-    val currentlyVisibleThreads = remember(state.filteredThreads, state.showContactsOnly) {
-        if (state.showContactsOnly) state.filteredThreads.filter { it.isContact } else state.filteredThreads
+    // "Contacts only" is a filter of the All tab; custom tabs keep their own scope.
+    val contactsOnlyActive = state.showContactsOnly && state.selectedTabId == null
+    val currentlyVisibleThreads = remember(state.filteredThreads, contactsOnlyActive, state.pendingDeleteIds) {
+        val visible = state.filteredThreads.filter { it.threadId !in state.pendingDeleteIds }
+        if (contactsOnlyActive) visible.filter { it.isContact } else visible
     }
     val isDebuggable = remember(context) {
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -195,7 +255,8 @@ fun ConversationsScreen(
                 isSelectionMode = isSelectionMode,
                 selectedThreadIds = selectedThreadIds,
                 visibleThreads = currentlyVisibleThreads,
-                showContactsOnly = state.showContactsOnly,
+                showContactsOnly = contactsOnlyActive,
+                showContactsToggle = state.selectedTabId == null,
                 threads = state.threads,
                 isDebuggable = isDebuggable,
                 onClearSelection = { viewModel.clearSelection() },
@@ -204,7 +265,7 @@ fun ConversationsScreen(
                     viewModel.markSelectedConversationsRead { count ->
                         Toast.makeText(
                             context,
-                            "Marked $count conversation${if (count > 1) "s" else ""} as read",
+                            context.getString(R.string.inbox_marked_read_count, count),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -212,19 +273,32 @@ fun ConversationsScreen(
                 onDeleteSelected = { showBatchDeleteDialog = true },
                 showTabs = state.showTabs,
                 onAddToTab = { showAddToTabDialog = true },
+                onOpenSearch = { isSearchOpen = true },
                 onToggleContactsOnly = {
                     viewModel.toggleContactsOnly()
-                    val msg = if (!state.showContactsOnly) "Showing contacts only" else "Showing all conversations"
+                    val msg = if (!contactsOnlyActive) {
+                        context.getString(R.string.inbox_showing_contacts_only)
+                    } else {
+                        context.getString(R.string.inbox_showing_all)
+                    }
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 },
                 onMarkAllRead = {
                     val hasUnread = state.threads.any { it.unreadCount > 0 }
                     if (hasUnread) {
                         viewModel.markAllConversationsRead {
-                            Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.inbox_all_marked_read),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } else {
-                        Toast.makeText(context, "All conversations are already read", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.inbox_all_already_read),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 },
                 onNavigateToTestLab = onNavigateToTestLab,
@@ -255,6 +329,7 @@ fun ConversationsScreen(
                 )
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -263,7 +338,7 @@ fun ConversationsScreen(
                 .padding(innerPadding)
         ) {
             AnimatedVisibility(
-                visible = !isSelectionMode,
+                visible = !isSelectionMode && isSearchOpen,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -282,27 +357,42 @@ fun ConversationsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         OutlinedTextField(
                             value = state.searchQuery,
                             onValueChange = { viewModel.onSearchQueryChanged(it) },
                             placeholder = {
                                 Text(
-                                    "Search conversations or numbers...",
+                                    stringResource(R.string.inbox_search_hint),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.outline
                                 )
                             },
                             trailingIcon = {
-                                if (state.searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (state.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = stringResource(R.string.inbox_clear_search),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    // Closes the search and returns to the plain inbox.
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.onSearchQueryChanged("")
+                                            isSearchOpen = false
+                                        }
+                                    ) {
                                         Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Clear search",
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = stringResource(R.string.inbox_close_search),
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -316,7 +406,9 @@ fun ConversationsScreen(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
                             ),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocusRequester)
                         )
                     }
                 }
@@ -331,8 +423,9 @@ fun ConversationsScreen(
                     tabs = state.tabs,
                     selectedTabId = state.selectedTabId,
                     threads = state.threads,
+                    allTabIndex = state.allTabIndex,
                     onSelectTab = { viewModel.selectTab(it) },
-                    onCreateTabClick = { showCreateTabDialog = true },
+                    onCreateTabClick = { tabEditorId = NEW_TAB_ID },
                     onTabOptionsClick = { tabForOptionsMenu = it },
                     onReorderTabs = { viewModel.reorderTabs(it) },
                     modifier = Modifier.fillMaxWidth()
@@ -426,8 +519,8 @@ fun ConversationsScreen(
 
             val isSearchActive = state.searchQuery.isNotBlank()
             val displayedThreads = currentlyVisibleThreads
-            val displayedMessages = remember(state.matchingMessages, state.showContactsOnly) {
-                if (state.showContactsOnly) {
+            val displayedMessages = remember(state.matchingMessages, contactsOnlyActive) {
+                if (contactsOnlyActive) {
                     state.matchingMessages.filter { !it.contactName.isNullOrBlank() }
                 } else {
                     state.matchingMessages
@@ -467,7 +560,7 @@ fun ConversationsScreen(
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.Search,
-                                        contentDescription = "No messages",
+                                        contentDescription = stringResource(R.string.inbox_no_messages),
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                         modifier = Modifier.size(40.dp)
                                     )
@@ -475,14 +568,14 @@ fun ConversationsScreen(
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = if (state.showContactsOnly) "No contact messages match \"${state.searchQuery}\"" else "No messages match \"${state.searchQuery}\"",
+                                text = if (contactsOnlyActive) "No contact messages match \"${state.searchQuery}\"" else "No messages match \"${state.searchQuery}\"",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (state.showContactsOnly) "Try a different keyword or toggle off the contacts filter" else "Try searching for a different keyword or contact name",
+                                text = if (contactsOnlyActive) "Try a different keyword or toggle off the contacts filter" else "Try searching for a different keyword or contact name",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -505,32 +598,37 @@ fun ConversationsScreen(
                                 key = { "thread_${it.threadId}" },
                                 contentType = { "thread" }
                             ) { thread ->
-                                ConversationItem(
-                                    thread = thread,
-                                    selectedIds = NoSelectionIds,
-                                    isSelectionMode = false,
-                                    simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
-                                    onClick = {
-                                        openChat(
-                                            ChatNav(
+                                SwipeToDeleteContainer(
+                                    enabled = swipeToDelete,
+                                    onDelete = { requestDeleteConversation(thread) }
+                                ) {
+                                    ConversationItem(
+                                        thread = thread,
+                                        selectedIds = NoSelectionIds,
+                                        isSelectionMode = false,
+                                        simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                                        onClick = {
+                                            openChat(
+                                                ChatNav(
+                                                    threadId = thread.threadId,
+                                                    address = thread.address,
+                                                    contactName = thread.contactName
+                                                )
+                                            )
+                                        },
+                                        onLongClick = {},
+                                        onAvatarClick = {
+                                            activeProfileDialogInfo = ProfileDialogData(
                                                 threadId = thread.threadId,
                                                 address = thread.address,
-                                                contactName = thread.contactName
+                                                contactName = thread.contactName,
+                                                photoUri = thread.photoUri,
+                                                contactLookupUri = thread.contactLookupUri,
+                                                isContact = thread.isContact
                                             )
-                                        )
-                                    },
-                                    onLongClick = {},
-                                    onAvatarClick = {
-                                        activeProfileDialogInfo = ProfileDialogData(
-                                            threadId = thread.threadId,
-                                            address = thread.address,
-                                            contactName = thread.contactName,
-                                            photoUri = thread.photoUri,
-                                            contactLookupUri = thread.contactLookupUri,
-                                            isContact = thread.isContact
-                                        )
-                                    }
-                                )
+                                        }
+                                    )
+                                }
                                 HorizontalDivider(
                                     modifier = Modifier.padding(start = AvatarDividerInset, end = 16.dp),
                                     thickness = 0.5.dp,
@@ -602,9 +700,9 @@ fun ConversationsScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = if (selectedTab != null) Icons.Default.FolderOpen
-                                    else if (state.showContactsOnly) Icons.Default.Contacts
+                                    else if (contactsOnlyActive) Icons.Default.Contacts
                                     else Icons.Default.Shield,
-                                    contentDescription = "No messages",
+                                    contentDescription = stringResource(R.string.inbox_no_messages),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                     modifier = Modifier.size(40.dp)
                                 )
@@ -613,7 +711,7 @@ fun ConversationsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (selectedTab != null) "No conversations in \"${selectedTab.name}\""
-                            else if (state.showContactsOnly) "No contacts found"
+                            else if (contactsOnlyActive) "No contacts found"
                             else "No SMS messages found",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
@@ -628,7 +726,7 @@ fun ConversationsScreen(
                                     "None of the senders in this tab have messages in your inbox"
                                 }
                             }
-                            else if (state.showContactsOnly) "Conversations with saved contacts will appear here"
+                            else if (contactsOnlyActive) "Conversations with saved contacts will appear here"
                             else "Incoming SMS messages will appear here",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
@@ -636,12 +734,12 @@ fun ConversationsScreen(
                         if (selectedTab != null) {
                             Spacer(modifier = Modifier.height(16.dp))
                             FilledTonalButton(
-                                onClick = { tabToManageSenders = selectedTab },
+                                onClick = { tabEditorId = selectedTab.id },
                                 shape = PillShape
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Manage Senders", fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.inbox_manage_senders), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -678,7 +776,7 @@ fun ConversationsScreen(
             onConfirm = { deletedCount ->
                 Toast.makeText(
                     context,
-                    "Deleted $deletedCount conversation${if (deletedCount > 1) "s" else ""}",
+                    context.getString(R.string.inbox_deleted_count, deletedCount),
                     Toast.LENGTH_SHORT
                 ).show()
             },
@@ -686,26 +784,47 @@ fun ConversationsScreen(
         )
     }
 
-    if (showCreateTabDialog) {
-        CreateTabDialog(
-            onDismiss = { showCreateTabDialog = false },
-            onCreate = { name ->
-                viewModel.createTab(name) {
-                    Toast.makeText(context, "Created tab \"$name\"", Toast.LENGTH_SHORT).show()
+    tabEditorId?.let { editingId ->
+        val liveTab = if (editingId == NEW_TAB_ID) null else state.tabs.find { it.id == editingId }
+        if (editingId == NEW_TAB_ID || liveTab != null) {
+            TabEditorDialog(
+                initialTab = liveTab,
+                allThreads = state.threads,
+                onDismiss = { tabEditorId = null },
+                onSave = { name, addresses, filterMask ->
+                    if (liveTab == null) {
+                        viewModel.createTab(name, addresses, filterMask) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.inbox_tab_created, name),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        viewModel.saveTab(liveTab.id, name, addresses, filterMask)
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.inbox_tab_saved, name),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    tabEditorId = null
                 }
-                showCreateTabDialog = false
-            }
-        )
+            )
+        }
     }
 
-    tabToRename?.let { tab ->
-        RenameTabDialog(
-            currentName = tab.name,
-            onDismiss = { tabToRename = null },
-            onRename = { newName ->
-                viewModel.renameTab(tab.id, newName)
-                Toast.makeText(context, "Renamed tab to \"$newName\"", Toast.LENGTH_SHORT).show()
-                tabToRename = null
+    tabForOptionsMenu?.let { tab ->
+        TabOptionsSheet(
+            tab = tab,
+            onDismiss = { tabForOptionsMenu = null },
+            onEdit = {
+                tabEditorId = tab.id
+                tabForOptionsMenu = null
+            },
+            onDelete = {
+                tabToDelete = tab
+                tabForOptionsMenu = null
             }
         )
     }
@@ -716,57 +835,12 @@ fun ConversationsScreen(
             onDismiss = { tabToDelete = null },
             onConfirm = {
                 viewModel.deleteTab(tab.id)
-                Toast.makeText(context, "Deleted tab \"${tab.name}\"", Toast.LENGTH_SHORT).show()
-                tabToDelete = null
-            }
-        )
-    }
-
-    tabForOptionsMenu?.let { tab ->
-        tabToEditFilters?.let { filterTab ->
-            val liveTab = state.tabs.find { it.id == filterTab.id } ?: filterTab
-            TabFilterDialog(
-                tab = liveTab,
-                onToggle = { mask, enabled -> viewModel.setTabFilterFlag(liveTab.id, mask, enabled) },
-                onDismiss = { tabToEditFilters = null }
-            )
-        }
-
-        TabOptionsMenuSheet(
-            tab = tab,
-            onDismiss = { tabForOptionsMenu = null },
-            onManageSenders = {
-                tabToManageSenders = tab
-                tabForOptionsMenu = null
-            },
-            onRename = {
-                tabToRename = tab
-                tabForOptionsMenu = null
-            },
-            onEditFilters = {
-                tabToEditFilters = tab
-                tabForOptionsMenu = null
-            },
-            onDelete = {
-                tabToDelete = tab
-                tabForOptionsMenu = null
-            }
-        )
-    }
-
-    tabToManageSenders?.let { tab ->
-        ManageTabSendersDialog(
-            tab = tab,
-            allThreads = state.threads,
-            onDismiss = { tabToManageSenders = null },
-            onSave = { addresses ->
-                viewModel.setTabSenders(tab.id, addresses)
                 Toast.makeText(
                     context,
-                    "Updated senders in \"${tab.name}\"",
+                    context.getString(R.string.inbox_tab_deleted, tab.name),
                     Toast.LENGTH_SHORT
                 ).show()
-                tabToManageSenders = null
+                tabToDelete = null
             }
         )
     }
@@ -780,7 +854,7 @@ fun ConversationsScreen(
                 viewModel.addSelectedToTabs(tabIds) { count ->
                     Toast.makeText(
                         context,
-                        "Added $count conversation${if (count > 1) "s" else ""} to tab",
+                        context.getString(R.string.inbox_added_to_tab_count, count),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -788,7 +862,7 @@ fun ConversationsScreen(
             },
             onCreateNewTab = {
                 showAddToTabDialog = false
-                showCreateTabDialog = true
+                tabEditorId = NEW_TAB_ID
             }
         )
     }
@@ -852,6 +926,8 @@ private fun ConversationsTopBar(
     selectedThreadIds: Set<Long>,
     visibleThreads: List<ConversationThread>,
     showContactsOnly: Boolean,
+    showContactsToggle: Boolean = true,
+    onOpenSearch: () -> Unit = {},
     threads: List<ConversationThread>,
     isDebuggable: Boolean,
     onClearSelection: () -> Unit,
@@ -884,7 +960,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onClearSelection) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel selection",
+                        contentDescription = stringResource(R.string.inbox_cancel_selection),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -902,7 +978,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = onAddToTab) {
                         Icon(
                             imageVector = Icons.Default.DriveFileMove,
-                            contentDescription = "Add to Tab",
+                            contentDescription = stringResource(R.string.inbox_add_to_tab),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -911,7 +987,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onMarkSelectedRead) {
                     Icon(
                         imageVector = Icons.Default.MarkChatRead,
-                        contentDescription = "Mark as read",
+                        contentDescription = stringResource(R.string.inbox_mark_as_read),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -919,7 +995,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onDeleteSelected) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete selected",
+                        contentDescription = stringResource(R.string.inbox_delete_selected),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -962,15 +1038,30 @@ private fun ConversationsTopBar(
 
                 Surface(
                     shape = CircleShape,
-                    color = contactsButtonBg,
-                    modifier = Modifier.padding(end = 6.dp)
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
                 ) {
-                    IconButton(onClick = onToggleContactsOnly) {
+                    IconButton(onClick = onOpenSearch) {
                         Icon(
-                            imageVector = Icons.Default.Contacts,
-                            contentDescription = if (showContactsOnly) "Showing contacts only (Tap to show all)" else "Filter by contacts only",
-                            tint = contactsIconTint
+                            imageVector = Icons.Default.Search,
+                            contentDescription = stringResource(R.string.inbox_search),
+                            tint = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
+
+                if (showContactsToggle) {
+                    Surface(
+                        shape = CircleShape,
+                        color = contactsButtonBg,
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        IconButton(onClick = onToggleContactsOnly) {
+                            Icon(
+                                imageVector = Icons.Default.Contacts,
+                                contentDescription = if (showContactsOnly) "Showing contacts only (Tap to show all)" else "Filter by contacts only",
+                                tint = contactsIconTint
+                            )
+                        }
                     }
                 }
 
@@ -981,7 +1072,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = onNavigateToFilterStudio) {
                         Icon(
                             imageVector = Icons.Default.FilterAlt,
-                            contentDescription = "Filter Studio",
+                            contentDescription = stringResource(R.string.inbox_filter_studio),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -993,7 +1084,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = { showOverflowMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
+                            contentDescription = stringResource(R.string.inbox_more_options),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -1002,7 +1093,7 @@ private fun ConversationsTopBar(
                         onDismissRequest = { showOverflowMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Customize inbox") },
+                            text = { Text(stringResource(R.string.inbox_customize)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Tune, contentDescription = null)
                             },
@@ -1012,7 +1103,7 @@ private fun ConversationsTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Settings") },
+                            text = { Text(stringResource(R.string.inbox_settings)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Settings, contentDescription = null)
                             },
@@ -1023,7 +1114,7 @@ private fun ConversationsTopBar(
                         )
                         if (threads.isNotEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("Mark all as read") },
+                                text = { Text(stringResource(R.string.inbox_mark_all_read)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.MarkChatRead, contentDescription = null)
                                 },
@@ -1035,7 +1126,7 @@ private fun ConversationsTopBar(
                         }
                         if (isDebuggable) {
                             DropdownMenuItem(
-                                text = { Text("Test Lab") },
+                                text = { Text(stringResource(R.string.inbox_test_lab)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.BugReport, contentDescription = null)
                                 },
@@ -1132,14 +1223,14 @@ private fun BatchDeleteConversationsDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Delete $count conversation${if (count > 1) "s" else ""}?",
+                text = stringResource(R.string.inbox_delete_confirm_title, count),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Text(
-                text = "Are you sure you want to delete $count selected conversation${if (count > 1) "s" else ""} and all associated messages? This action cannot be undone.",
+                text = stringResource(R.string.inbox_delete_confirm_body, count),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -1150,12 +1241,16 @@ private fun BatchDeleteConversationsDialog(
                     onDelete { deletedCount -> onConfirm(deletedCount) }
                 }
             ) {
-                Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.inbox_delete),
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.inbox_cancel))
             }
         }
     )
@@ -1213,7 +1308,7 @@ private fun ConversationItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.inbox_selected),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(26.dp)
                     )
@@ -1267,7 +1362,6 @@ private fun ConversationItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1276,9 +1370,13 @@ private fun ConversationItem(
                     fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.ExtraBold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
                     if (simSlotNumber != null) {
                         SimBadge(slotNumber = simSlotNumber)
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1296,8 +1394,7 @@ private fun ConversationItem(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = thread.snippet,
@@ -1318,7 +1415,7 @@ private fun ConversationItem(
                             border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                         ) {
                             Text(
-                                text = "Spam",
+                                text = stringResource(R.string.comp_spam),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.outline,
                                 fontWeight = FontWeight.Bold,
@@ -1473,7 +1570,7 @@ private fun SearchMessageResultItem(
                         border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
                     ) {
                         Text(
-                            text = "Spam",
+                            text = stringResource(R.string.comp_spam),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline,
                             fontWeight = FontWeight.Bold,
@@ -1535,3 +1632,95 @@ private data class ProfileDialogData(
     val contactLookupUri: String? = null,
     val isContact: Boolean = !contactName.isNullOrBlank()
 )
+
+/**
+ * Reveals a delete button when a conversation row is dragged sideways. The row itself never
+ * deletes anything: the user has to tap the bin, which keeps the gesture reversible.
+ */
+@Composable
+private fun SwipeToDeleteContainer(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val revealPx = with(LocalDensity.current) { 84.dp.toPx() }
+    var offset by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    val animatedOffset by animateFloat(
+        targetValue = offset,
+        animationSpec = tween(durationMillis = if (isDragging) 0 else 160),
+        label = "swipeReveal"
+    )
+    val revealed = animatedOffset != 0f
+
+    Box(modifier.fillMaxWidth()) {
+        if (revealed) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 12.dp),
+                contentAlignment = if (animatedOffset > 0) Alignment.CenterStart else Alignment.CenterEnd
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    IconButton(
+                        onClick = {
+                            offset = 0f
+                            onDelete()
+                        },
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.inbox_delete_conversation),
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = animatedOffset }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragStart = { isDragging = true },
+                        onDragEnd = {
+                            isDragging = false
+                            offset = when {
+                                abs(offset) < revealPx / 2f -> 0f
+                                offset > 0f -> revealPx
+                                else -> -revealPx
+                            }
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            offset = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            offset = (offset + dragAmount).coerceIn(-revealPx, revealPx)
+                        }
+                    )
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                content()
+            }
+        }
+    }
+}

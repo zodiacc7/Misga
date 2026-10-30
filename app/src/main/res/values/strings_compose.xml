@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_new_message">New message</string>
+    <string name="compose_to_label">To (name or number)</string>
+    <string name="compose_to_placeholder">Type name or phone number…</string>
+    <string name="compose_no_contacts">No contacts found</string>
+    <string name="compose_send_to">Send to %1$s</string>
+    <string name="compose_start_conversation">Start a conversation</string>
+</resources>

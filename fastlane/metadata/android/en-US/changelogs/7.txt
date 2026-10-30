@@ -1,0 +1,2 @@
+• Search stays visible when you come back from a conversation, so results and the field never get out of sync.
+• Small polish for the new search button, sliders and About dialog.

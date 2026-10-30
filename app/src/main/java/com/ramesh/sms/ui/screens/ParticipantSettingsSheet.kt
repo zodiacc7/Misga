@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ramesh.sms.data.model.FilterAction
@@ -77,6 +78,7 @@ import com.ramesh.sms.theme.SuccessContainerLight
 import com.ramesh.sms.theme.SuccessDark
 import com.ramesh.sms.theme.SuccessLight
 import com.ramesh.sms.ui.components.ConversationAvatar
+import com.ramesh.sms.R
 import com.ramesh.sms.ui.components.CreateTabDialog
 import com.ramesh.sms.ui.util.senderDisplayName
 import com.ramesh.sms.ui.util.contentAware
@@ -154,7 +156,7 @@ fun ParticipantSettingsSheet(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Add", style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.participant_add), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
@@ -163,7 +165,7 @@ fun ParticipantSettingsSheet(
 
             // Notification Tier Configuration
             Text(
-                text = "Participant Notification Tier",
+                text = stringResource(R.string.participant_tier_title),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -229,7 +231,7 @@ fun ParticipantSettingsSheet(
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Preferred SIM Card",
+                    text = stringResource(R.string.participant_sim_title),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -292,7 +294,7 @@ fun ParticipantSettingsSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Sender Tabs (${senderTabIds.size})",
+                    text = stringResource(R.string.participant_tabs_title, senderTabIds.size),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -305,7 +307,11 @@ fun ParticipantSettingsSheet(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("New Tab", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.participant_new_tab),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
@@ -318,7 +324,7 @@ fun ParticipantSettingsSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No tabs created yet. Tap 'New Tab' to organize this sender into groups like Family or Friends.",
+                        text = stringResource(R.string.participant_no_tabs),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(12.dp)
@@ -381,7 +387,7 @@ fun ParticipantSettingsSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Custom Rules for this Sender (${senderRules.size})",
+                    text = stringResource(R.string.participant_rules_title, senderRules.size),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
@@ -394,7 +400,11 @@ fun ParticipantSettingsSheet(
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add Rule", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.participant_add_rule),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
@@ -407,7 +417,7 @@ fun ParticipantSettingsSheet(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "No sender-specific regex rules. Global filter rules will apply to incoming messages.",
+                        text = stringResource(R.string.participant_no_rules),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(12.dp)
@@ -589,7 +599,7 @@ fun AddSenderRuleDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Rule Name (e.g. Discount codes)") },
+                    label = { Text(stringResource(R.string.participant_rule_name)) },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
@@ -599,14 +609,14 @@ fun AddSenderRuleDialog(
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it },
-                    label = { Text("Regex Pattern (e.g. تخفیف|حراج)") },
+                    label = { Text(stringResource(R.string.participant_rule_pattern)) },
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = "Trigger Action:",
+                    text = stringResource(R.string.participant_trigger),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -637,12 +647,12 @@ fun AddSenderRuleDialog(
                 },
                 shape = PillShape
             ) {
-                Text("Save Rule", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.participant_save_rule), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )

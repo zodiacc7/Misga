@@ -124,6 +124,14 @@ class RameshDatabaseHelper private constructor(context: Context) :
 
     override fun onOpen(db: SQLiteDatabase) {
         super.onOpen(db)
+        // Defensive: older builds created sender_tabs without the filter mask, and a DB that was
+        // already stamped with the new version would never run the migration. Adding the column
+        // here is idempotent (the duplicate-column error is swallowed).
+        try {
+            db.execSQL("ALTER TABLE sender_tabs ADD COLUMN filter_mask INTEGER NOT NULL DEFAULT 0")
+        } catch (_: Exception) {
+            // column already present
+        }
         if (predefinedRulesSeeded) return
         seedPredefinedRules(db)
         predefinedRulesSeeded = true
@@ -820,10 +828,10 @@ class RameshDatabaseHelper private constructor(context: Context) :
         }
 
         val tabs = mutableListOf<SenderTab>()
-        try {
+        val readTabs: (Array<String>) -> Unit = { projection ->
             db.query(
                 "sender_tabs",
-                arrayOf("id", "name", "sort_order", "created_at", "filter_mask"),
+                projection,
                 null, null, null, null,
                 "sort_order ASC, id ASC"
             ).use { cursor ->
@@ -850,8 +858,17 @@ class RameshDatabaseHelper private constructor(context: Context) :
                     )
                 }
             }
-        } catch (e: Exception) {
-            // Table might not exist yet
+        }
+        try {
+            readTabs(arrayOf("id", "name", "sort_order", "created_at", "filter_mask"))
+        } catch (_: Exception) {
+            // Very old schema without filter_mask: read the tabs without it.
+            tabs.clear()
+            try {
+                readTabs(arrayOf("id", "name", "sort_order", "created_at"))
+            } catch (_: Exception) {
+                // Table might not exist yet
+            }
         }
         tabs
     }

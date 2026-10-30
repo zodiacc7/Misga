@@ -74,6 +74,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -86,6 +87,7 @@ import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.theme.SquircleCardShape
 import com.ramesh.sms.theme.SquircleMediumShape
 import com.ramesh.sms.theme.TagShape
+import com.ramesh.sms.R
 import com.ramesh.sms.ui.viewmodel.FilterStudioUiState
 import com.ramesh.sms.ui.viewmodel.FilterStudioViewModel
 
@@ -125,7 +127,7 @@ fun FilterStudioScreen(
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "Filter Studio",
+                                text = stringResource(R.string.filter_title),
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
@@ -136,7 +138,7 @@ fun FilterStudioScreen(
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Text(
-                                    text = "Regex",
+                                    text = stringResource(R.string.filter_regex_word),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.ExtraBold,
@@ -146,7 +148,7 @@ fun FilterStudioScreen(
                             }
                         }
                         Text(
-                            text = "Allowlist & Iranian Spam Rules Engine",
+                            text = stringResource(R.string.filter_subtitle),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -154,7 +156,7 @@ fun FilterStudioScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.filter_back))
                     }
                 },
                 actions = {
@@ -162,15 +164,21 @@ fun FilterStudioScreen(
                     IconButton(onClick = {
                         val json = viewModel.exportRulesJson()
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Ramesh Rules", json))
-                        Toast.makeText(context, "Exported ${state.rules.size} rules with listType to clipboard", Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(
+                            ClipData.newPlainText(context.getString(R.string.filter_export_label), json)
+                        )
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.filter_exported, state.rules.size),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }) {
-                        Icon(Icons.Default.Download, contentDescription = "Export Rules JSON")
+                        Icon(Icons.Default.Download, contentDescription = stringResource(R.string.filter_export))
                     }
 
                     // Import JSON
                     IconButton(onClick = { showImportDialog = true }) {
-                        Icon(Icons.Default.Upload, contentDescription = "Import Rules JSON")
+                        Icon(Icons.Default.Upload, contentDescription = stringResource(R.string.filter_import))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -229,7 +237,7 @@ fun FilterStudioScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Playground", fontWeight = if (selectedTab == FilterStudioTab.Playground) FontWeight.Bold else FontWeight.Medium)
+                            Text(stringResource(R.string.filter_playground), fontWeight = if (selectedTab == FilterStudioTab.Playground) FontWeight.Bold else FontWeight.Medium)
                         }
                     }
                 )
@@ -241,7 +249,7 @@ fun FilterStudioScreen(
                             Icon(Icons.Default.GppGood, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                "Allowlist (${state.allowlistRules.size})",
+                                stringResource(R.string.filter_tab_allowlist, state.allowlistRules.size),
                                 fontWeight = if (selectedTab == FilterStudioTab.Allowlist) FontWeight.Bold else FontWeight.Medium
                             )
                         }
@@ -255,7 +263,7 @@ fun FilterStudioScreen(
                             Icon(Icons.Default.Shield, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                "Blocklist (${state.blocklistRules.size})",
+                                stringResource(R.string.filter_tab_blocklist, state.blocklistRules.size),
                                 fontWeight = if (selectedTab == FilterStudioTab.Blocklist) FontWeight.Bold else FontWeight.Medium
                             )
                         }
@@ -266,7 +274,7 @@ fun FilterStudioScreen(
                     onClick = { selectedTab = FilterStudioTab.Presets },
                     text = {
                         Text(
-                            "All Presets (${state.predefinedRules.size})",
+                            stringResource(R.string.filter_tab_presets, state.predefinedRules.size),
                             fontWeight = if (selectedTab == FilterStudioTab.Presets) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -322,10 +330,10 @@ fun FilterStudioScreen(
         AlertDialog(
             onDismissRequest = { ruleToDelete = null },
             shape = SquircleCardShape,
-            title = { Text("Delete Rule?", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.filter_delete_rule_title), fontWeight = FontWeight.Bold) },
             text = {
                 Text(
-                    text = "Are you sure you want to delete '${rule.name}'? This rule will no longer filter incoming messages.",
+                    text = stringResource(R.string.filter_delete_rule_body, rule.name),
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -338,11 +346,11 @@ fun FilterStudioScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     shape = PillShape
                 ) {
-                    Text("Delete", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.filter_delete_word), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { ruleToDelete = null }) { Text("Cancel") }
+                TextButton(onClick = { ruleToDelete = null }) { Text(stringResource(R.string.filter_cancel_word)) }
             }
         )
     }
@@ -357,13 +365,13 @@ fun FilterStudioScreen(
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
             shape = SquircleCardShape,
-            title = { Text("Save Regex as Custom Rule", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.filter_save_custom_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     OutlinedTextField(
                         value = ruleName,
                         onValueChange = { ruleName = it },
-                        label = { Text("Rule Name") },
+                        label = { Text(stringResource(R.string.filter_rule_name)) },
                         singleLine = true,
                         textStyle = LocalTextStyle.current.contentAware(),
                         shape = MaterialTheme.shapes.medium,
@@ -373,7 +381,7 @@ fun FilterStudioScreen(
                     OutlinedTextField(
                         value = ruleDesc,
                         onValueChange = { ruleDesc = it },
-                        label = { Text("Description (Optional)") },
+                        label = { Text(stringResource(R.string.filter_description_optional)) },
                         textStyle = LocalTextStyle.current.contentAware(),
                         shape = MaterialTheme.shapes.medium,
                         modifier = Modifier.fillMaxWidth()
@@ -381,7 +389,7 @@ fun FilterStudioScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        text = "List Classification:",
+                        text = stringResource(R.string.filter_list_classification),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -397,7 +405,7 @@ fun FilterStudioScreen(
                                     selectedAction = FilterAction.NORMAL
                                 }
                             )
-                            Text("Allowlist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.filter_allowlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
@@ -407,14 +415,14 @@ fun FilterStudioScreen(
                                     selectedAction = FilterAction.SPAM
                                 }
                             )
-                            Text("Blocklist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                            Text(stringResource(R.string.filter_blocklist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         }
                     }
 
                     if (selectedListType == RuleListType.BLOCKLIST) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Trigger Action:",
+                            text = stringResource(R.string.filter_trigger_action),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -438,7 +446,7 @@ fun FilterStudioScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Pattern: ${state.testPattern}",
+                            text = stringResource(R.string.filter_pattern_value, state.testPattern.orEmpty()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(8.dp)
@@ -461,11 +469,11 @@ fun FilterStudioScreen(
                     },
                     shape = PillShape
                 ) {
-                    Text("Save Rule", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.filter_save_rule), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showSaveDialog = false }) { Text(stringResource(R.string.filter_cancel_word)) }
             }
         )
     }
@@ -498,11 +506,11 @@ fun FilterStudioScreen(
         AlertDialog(
             onDismissRequest = { showImportDialog = false },
             shape = SquircleCardShape,
-            title = { Text("Import Filter Rules JSON", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.filter_import_title), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
                     Text(
-                        "Paste exported JSON rules array below. Rules include listType (ALLOWLIST / BLOCKLIST):",
+                        stringResource(R.string.filter_import_body),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -540,11 +548,11 @@ fun FilterStudioScreen(
                     },
                     shape = PillShape
                 ) {
-                    Text("Import", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.filter_import_action), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showImportDialog = false }) { Text(stringResource(R.string.filter_cancel_word)) }
             }
         )
     }
@@ -567,7 +575,7 @@ private fun PlaygroundTab(
         item {
             // OTP Allowlist Quick-Fills
             Text(
-                text = "OTP & Allowlist Presets (Highest Priority)",
+                text = stringResource(R.string.filter_presets_allowlist),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -585,7 +593,7 @@ private fun PlaygroundTab(
                             RuleListType.ALLOWLIST
                         )
                     },
-                    label = { Text("OTP Code (کد ورود / تایید)") },
+                    label = { Text(stringResource(R.string.filter_preset_otp)) },
                     leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
@@ -600,7 +608,7 @@ private fun PlaygroundTab(
                             RuleListType.ALLOWLIST
                         )
                     },
-                    label = { Text("Bank OTP (رمز پویا / دوم)") },
+                    label = { Text(stringResource(R.string.filter_preset_bank)) },
                     leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
@@ -615,7 +623,7 @@ private fun PlaygroundTab(
                             RuleListType.ALLOWLIST
                         )
                     },
-                    label = { Text("Direct Code (کد: / رمز:)") },
+                    label = { Text(stringResource(R.string.filter_preset_direct)) },
                     leadingIcon = { Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(16.dp)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
@@ -628,7 +636,7 @@ private fun PlaygroundTab(
 
             // Spam Blocklist Quick-Fills
             Text(
-                text = "Spam & Blocklist Presets",
+                text = stringResource(R.string.filter_presets_blocklist),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.outline,
                 fontWeight = FontWeight.SemiBold
@@ -646,7 +654,7 @@ private fun PlaygroundTab(
                             RuleListType.BLOCKLIST
                         )
                     },
-                    label = { Text("Promo Opt-out (لغو ۱۱)") },
+                    label = { Text(stringResource(R.string.filter_preset_promo)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -660,7 +668,7 @@ private fun PlaygroundTab(
                             RuleListType.BLOCKLIST
                         )
                     },
-                    label = { Text("Loan Scam (وام فوری)") },
+                    label = { Text(stringResource(R.string.filter_preset_loan)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -674,7 +682,7 @@ private fun PlaygroundTab(
                             RuleListType.BLOCKLIST
                         )
                     },
-                    label = { Text("Phishing Link (ثنا/عدالت)") },
+                    label = { Text(stringResource(R.string.filter_preset_phishing)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -688,7 +696,7 @@ private fun PlaygroundTab(
                             RuleListType.BLOCKLIST
                         )
                     },
-                    label = { Text("Monthly Discount (تخفیف ماهیانه)") },
+                    label = { Text(stringResource(R.string.filter_preset_discount)) },
                     shape = PillShape,
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -702,13 +710,16 @@ private fun PlaygroundTab(
             OutlinedTextField(
                 value = state.testPattern,
                 onValueChange = onPatternChange,
-                label = { Text("Regex Pattern") },
+                label = { Text(stringResource(R.string.filter_regex_pattern)) },
                 supportingText = {
                     val res = state.testResult
                     if (res != null && !res.isValid) {
-                        Text("Error: ${res.errorMessage}", color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(R.string.filter_error, res.errorMessage.orEmpty()),
+                            color = MaterialTheme.colorScheme.error
+                        )
                     } else {
-                        Text("Supports Unicode Persian regular expressions", color = MaterialTheme.colorScheme.outline)
+                        Text(stringResource(R.string.filter_unicode_help), color = MaterialTheme.colorScheme.outline)
                     }
                 },
                 isError = state.testResult?.isValid == false,
@@ -726,7 +737,7 @@ private fun PlaygroundTab(
             OutlinedTextField(
                 value = state.testSampleText,
                 onValueChange = onSampleChange,
-                label = { Text("Test Sample SMS Text") },
+                label = { Text(stringResource(R.string.filter_test_sample)) },
                 minLines = 3,
                 maxLines = 6,
                 textStyle = LocalTextStyle.current.contentAware(),
@@ -767,7 +778,7 @@ private fun PlaygroundTab(
                             )
                             Spacer(modifier = Modifier.width(10.dp))
                             Text(
-                                text = if (isMatch) "Match Detected!" else "No Match",
+                                text = stringResource(if (isMatch) R.string.filter_match_found else R.string.filter_no_match),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isMatch) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -788,7 +799,11 @@ private fun PlaygroundTab(
                             }
                         ) {
                             Text(
-                                text = if (state.simulatedListType == RuleListType.ALLOWLIST) "ALLOWLIST (TOP PRIORITY)" else "BLOCKLIST: ${state.simulatedAction.displayLabel}",
+                                text = if (state.simulatedListType == RuleListType.ALLOWLIST) {
+                                    stringResource(R.string.filter_allowlist_badge)
+                                } else {
+                                    stringResource(R.string.filter_blocklist_badge, state.simulatedAction.displayLabel)
+                                },
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
@@ -813,7 +828,7 @@ private fun PlaygroundTab(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = "Matched Substring: ${state.testResult.matchedSubstrings.joinToString()}",
+                                text = stringResource(R.string.filter_matched_substring, state.testResult.matchedSubstrings.joinToString()),
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.primary,
@@ -826,7 +841,7 @@ private fun PlaygroundTab(
 
                     // List Classification Selector
                     Text(
-                        text = "Rule List Target:",
+                        text = stringResource(R.string.filter_list_target),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -840,7 +855,7 @@ private fun PlaygroundTab(
                                 onClick = { onListTypeChange(RuleListType.ALLOWLIST) }
                             )
                             Text(
-                                text = "Allowlist (Top Priority)",
+                                text = stringResource(R.string.filter_allowlist_priority),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (state.simulatedListType == RuleListType.ALLOWLIST) FontWeight.Bold else FontWeight.Normal
                             )
@@ -851,7 +866,7 @@ private fun PlaygroundTab(
                                 onClick = { onListTypeChange(RuleListType.BLOCKLIST) }
                             )
                             Text(
-                                text = "Blocklist",
+                                text = stringResource(R.string.filter_blocklist),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (state.simulatedListType == RuleListType.BLOCKLIST) FontWeight.Bold else FontWeight.Normal
                             )
@@ -866,7 +881,7 @@ private fun PlaygroundTab(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Blocklist Action:",
+                                text = stringResource(R.string.filter_blocklist_action),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -906,7 +921,11 @@ private fun PlaygroundTab(
                         Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (state.simulatedListType == RuleListType.ALLOWLIST) "Save as Allowlist Rule" else "Save as Blocklist Rule",
+                            text = if (state.simulatedListType == RuleListType.ALLOWLIST) {
+                                stringResource(R.string.filter_save_as_allowlist)
+                            } else {
+                                stringResource(R.string.filter_save_as_blocklist)
+                            },
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -947,14 +966,14 @@ private fun AllowlistTab(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "Allowlist Priority System",
+                            text = stringResource(R.string.filter_priority_title),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Allowlist rules have higher priority than blocklists. If an incoming message matches an allowlist rule (e.g. OTP verification codes, banking passwords), it is immediately treated as safe and delivered with alert sound, overriding all blocklists.",
+                            text = stringResource(R.string.filter_priority_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
                             lineHeight = 17.sp
@@ -973,7 +992,7 @@ private fun AllowlistTab(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No allowlist rules active. Tap '+' to create one.",
+                        text = stringResource(R.string.filter_empty_allowlist),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -1013,7 +1032,7 @@ private fun BlocklistTab(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No blocklist rules active. Tap '+' to create one.",
+                        text = stringResource(R.string.filter_empty_blocklist),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
@@ -1062,7 +1081,7 @@ private fun PredefinedRulesTab(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Built-in rules include Iranian OTP presets (Allowlist) and telecom spam filters (Blocklist). You can toggle, customize, or delete any preset below.",
+                        text = stringResource(R.string.filter_presets_help),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface,
                         lineHeight = 18.sp
@@ -1169,7 +1188,7 @@ private fun RuleCard(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "ALLOWLIST • TOP PRIORITY",
+                                    text = stringResource(R.string.filter_allowlist_badge),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1178,7 +1197,7 @@ private fun RuleCard(
                         }
                     } else {
                         Text(
-                            text = "Action: ",
+                            text = stringResource(R.string.filter_action_prefix),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -1211,7 +1230,7 @@ private fun RuleCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Edit Rule",
+                            contentDescription = stringResource(R.string.filter_edit_rule),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp)
                         )
@@ -1221,7 +1240,7 @@ private fun RuleCard(
                     IconButton(onClick = onDelete) {
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
-                            contentDescription = "Delete Rule",
+                            contentDescription = stringResource(R.string.filter_delete_rule),
                             tint = MaterialTheme.colorScheme.error,
                             modifier = Modifier.size(20.dp)
                         )
@@ -1259,7 +1278,7 @@ private fun EditRuleDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Rule Name") },
+                    label = { Text(stringResource(R.string.filter_rule_name)) },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
@@ -1271,7 +1290,7 @@ private fun EditRuleDialog(
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it },
-                    label = { Text(if (isRegex) "Regex Pattern" else "Pattern") },
+                    label = { Text(if (isRegex) stringResource(R.string.filter_regex_pattern) else stringResource(R.string.filter_pattern_plain)) },
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
@@ -1282,7 +1301,7 @@ private fun EditRuleDialog(
                 FilterChip(
                     selected = isRegex,
                     onClick = { isRegex = !isRegex },
-                    label = { Text("Regex") },
+                    label = { Text(stringResource(R.string.filter_regex_word)) },
                     shape = PillShape
                 )
 
@@ -1291,7 +1310,7 @@ private fun EditRuleDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description") },
+                    label = { Text(stringResource(R.string.filter_description)) },
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1299,7 +1318,7 @@ private fun EditRuleDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "List Classification:",
+                    text = stringResource(R.string.filter_list_classification),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1316,7 +1335,7 @@ private fun EditRuleDialog(
                                 selectedAction = FilterAction.NORMAL
                             }
                         )
-                        Text("Allowlist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.filter_allowlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
@@ -1326,14 +1345,14 @@ private fun EditRuleDialog(
                                 if (selectedAction == FilterAction.NORMAL) selectedAction = FilterAction.SPAM
                             }
                         )
-                        Text("Blocklist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.filter_blocklist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 if (selectedListType == RuleListType.BLOCKLIST) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Action Tier:",
+                        text = stringResource(R.string.filter_action_tier),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -1380,11 +1399,11 @@ private fun EditRuleDialog(
                 },
                 shape = PillShape
             ) {
-                Text("Save Changes", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.filter_save_changes), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.filter_cancel_word)) }
         }
     )
 }
@@ -1420,7 +1439,14 @@ fun AddGlobalRuleDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text(if (listType == RuleListType.ALLOWLIST) "Rule Name (e.g. Bank OTP)" else "Rule Name (e.g. Discount codes)") },
+                    label = {
+                        Text(
+                            stringResource(
+                                if (listType == RuleListType.ALLOWLIST) R.string.filter_rule_name_otp
+                                else R.string.filter_rule_name_discount
+                            )
+                        )
+                    },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
@@ -1430,7 +1456,7 @@ fun AddGlobalRuleDialog(
                 OutlinedTextField(
                     value = pattern,
                     onValueChange = { pattern = it },
-                    label = { Text("Regex Pattern") },
+                    label = { Text(stringResource(R.string.filter_regex_pattern)) },
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
                     modifier = Modifier.fillMaxWidth()
@@ -1438,7 +1464,7 @@ fun AddGlobalRuleDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
-                    text = "List Classification:",
+                    text = stringResource(R.string.filter_list_classification),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -1454,7 +1480,7 @@ fun AddGlobalRuleDialog(
                                 action = FilterAction.NORMAL
                             }
                         )
-                        Text("Allowlist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.filter_allowlist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
@@ -1464,14 +1490,14 @@ fun AddGlobalRuleDialog(
                                 action = FilterAction.SPAM
                             }
                         )
-                        Text("Blocklist", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.filter_blocklist), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                     }
                 }
 
                 if (listType == RuleListType.BLOCKLIST) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Trigger Action:",
+                        text = stringResource(R.string.filter_trigger_action),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -1502,12 +1528,12 @@ fun AddGlobalRuleDialog(
                 },
                 shape = PillShape
             ) {
-                Text("Save Rule", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.filter_save_rule), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.filter_cancel_word))
             }
         }
     )

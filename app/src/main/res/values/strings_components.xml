@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="comp_customize_title">Customize</string>
+    <string name="comp_customize_sub">Personalize your messaging experience</string>
+    <string name="comp_appearance_title">Theme, bubbles &amp; background</string>
+    <string name="comp_appearance_sub">Accent color, bubble style, chat wallpaper, fonts and more</string>
+    <string name="comp_tabs_title">Conversation tabs</string>
+    <string name="comp_tabs_sub">Show custom tabs above the inbox for grouping contacts and organizing messages</string>
+    <string name="comp_sim_filter_title">SIM card filter</string>
+    <string name="comp_sim_filter_sub">Show SIM card tabs above the inbox to filter conversations by SIM on multi-SIM devices</string>
+    <string name="comp_no_spam_contacts_title">No spam for contacts</string>
+    <string name="comp_no_spam_contacts_sub">SMS messages from people in contacts will not be marked as spam even if they send a blacklist message</string>
+    <string name="comp_date_tap_title">Tap date to switch calendar</string>
+    <string name="comp_date_tap_sub">Tap message timestamps in chat bubbles to toggle between standard and Shamsi dates</string>
+    <string name="comp_notif_delete_title">Delete in notifications</string>
+    <string name="comp_notif_delete_sub">Show a Delete button next to Reply and Mark as read to quickly delete incoming messages</string>
+    <string name="comp_banner_badge">Spam Defense &amp; Regex Interceptor</string>
+    <string name="comp_banner_body">Set Ramesh as your default SMS app to intercept Persian telecom spam, phishing messages, and silence intrusive advertiser blasts in real time.</string>
+    <string name="comp_banner_cta">Set Default SMS</string>
+    <string name="comp_security_shield">Security shield</string>
+    <string name="comp_all">All</string>
+    <string name="comp_all_sims">All SIMs</string>
+    <string name="comp_sim_label">SIM %1$d</string>
+    <string name="comp_sim_carrier">SIM %1$d (%2$s)</string>
+    <string name="comp_switch_sim">Switch SIM</string>
+    <string name="comp_selected">Selected</string>
+    <string name="comp_spam_filtered">Spam filtered</string>
+    <string name="comp_spam_message_filtered">Spam message filtered</string>
+    <string name="comp_rule_label">Rule: %1$s</string>
+    <string name="comp_not_spam">Not spam</string>
+    <string name="comp_add_contact">Add contact</string>
+    <string name="comp_segment_counter">%1$d/%2$d • %3$d SMS (%4$s)</string>
+    <string name="comp_unicode">Persian/Unicode</string>
+    <string name="comp_gsm7">GSM-7</string>
+    <string name="comp_tab_options">Tab options</string>
+    <string name="comp_new_tab">New tab</string>
+    <string name="comp_call">Call</string>
+    <string name="comp_info">Info</string>
+    <string name="comp_delete">Delete</string>
+    <string name="comp_spam">Spam</string>
+    <string name="chat_no_messages_yet">No messages yet</string>
+    <string name="chat_send_to_start">Send an SMS to start the conversation</string>
+    <string name="chat_message_options">Message options</string>
+    <string name="chat_delete_messages_title">Delete messages?</string>
+    <string name="chat_delete_messages_body">Are you sure you want to delete %1$d selected messages? This action cannot be undone.</string>
+    <string name="chat_react_action">React</string>
+</resources>

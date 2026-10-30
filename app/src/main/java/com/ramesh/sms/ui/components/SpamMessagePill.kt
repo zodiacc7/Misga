@@ -48,8 +48,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ramesh.sms.R
 import com.ramesh.sms.data.model.SmsMessage
 import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.theme.SpamCardShape
@@ -131,7 +133,7 @@ fun SpamMessagePill(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Shield,
-                            contentDescription = "Spam Filtered",
+                            contentDescription = stringResource(R.string.comp_spam_filtered),
                             tint = textColor,
                             modifier = Modifier.size(18.dp)
                         )
@@ -141,7 +143,7 @@ fun SpamMessagePill(
 
                     Column {
                         Text(
-                            text = "Spam Message Filtered",
+                            text = stringResource(R.string.comp_spam_message_filtered),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = textColor
@@ -153,7 +155,7 @@ fun SpamMessagePill(
                                 modifier = Modifier.padding(top = 2.dp)
                             ) {
                                 Text(
-                                    text = "Rule: $ruleName",
+                                    text = stringResource(R.string.comp_rule_label, ruleName),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = textColor,
                                     fontSize = 10.5.sp,
@@ -274,7 +276,7 @@ fun SpamMessagePill(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Not Spam",
+                                    text = stringResource(R.string.comp_not_spam),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.primary
@@ -292,7 +294,7 @@ fun SpamMessagePill(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "Delete",
+                                    text = stringResource(R.string.comp_delete),
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.SemiBold,
                                     color = MaterialTheme.colorScheme.error

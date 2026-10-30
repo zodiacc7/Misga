@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="participant_add">افزودن</string>
+    <string name="participant_tier_title">سطح اعلان این مخاطب</string>
+    <string name="participant_sim_title">سیم‌کارت ترجیحی</string>
+    <string name="participant_tabs_title">تب‌های فرستنده (%1$d)</string>
+    <string name="participant_new_tab">تب جدید</string>
+    <string name="participant_no_tabs">هنوز تبی ساخته نشده است. روی «تب جدید» بزنید تا این فرستنده در گروه‌هایی مثل خانواده یا دوستان دسته‌بندی شود.</string>
+    <string name="participant_rules_title">قواعد اختصاصی این فرستنده (%1$d)</string>
+    <string name="participant_add_rule">افزودن قاعده</string>
+    <string name="participant_no_rules">قاعدهٔ اختصاصی برای این فرستنده وجود ندارد؛ قواعد عمومی فیلتر روی پیام‌های دریافتی اعمال می‌شوند.</string>
+    <string name="participant_rule_name">نام قاعده (مثلاً کدهای تخفیف)</string>
+    <string name="participant_rule_pattern">الگوی عبارت منظم</string>
+    <string name="participant_trigger">اقدام فعال‌ساز:</string>
+    <string name="participant_save_rule">ذخیرهٔ قاعده</string>
+</resources>

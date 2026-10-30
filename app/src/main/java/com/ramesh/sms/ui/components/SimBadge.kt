@@ -17,9 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ramesh.sms.R
 
 private val SimBadgeShape = RoundedCornerShape(5.dp)
 
@@ -32,7 +34,7 @@ fun SimBadge(
     compact: Boolean = false,
     tint: Color? = null
 ) {
-    val text = if (compact) "$slotNumber" else "SIM $slotNumber"
+    val text = if (compact) "$slotNumber" else stringResource(R.string.comp_sim_label, slotNumber)
     // Bubbles can use custom Textra-style colours, so they pass their own tint.
     val contentColor = tint?.copy(alpha = 0.9f) ?: if (isSent) {
         MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)

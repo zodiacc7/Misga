@@ -28,6 +28,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -259,6 +261,97 @@ fun SettingsChoiceRow(
         }
     }
     if (showDivider) SettingsRowDivider()
+}
+
+/**
+ * A Textra-like slider row: title, subtitle and the current value on the trailing edge, with a
+ * [Slider] underneath. Used for values that read better as a continuous control (send delay,
+ * auto-delete limit) instead of a strip of pills.
+ */
+@Composable
+fun SettingsSliderRow(
+    title: String,
+    subtitle: String? = null,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    valueLabel: String,
+    onValueChange: (Float) -> Unit,
+    onValueChangeFinished: () -> Unit = {},
+    steps: Int = 0,
+    showDivider: Boolean = false
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+            Surface(
+                shape = PillShape,
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
+            ) {
+                Text(
+                    text = valueLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                )
+            }
+        }
+        Slider(
+            value = value.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            onValueChangeFinished = onValueChangeFinished,
+            colors = SliderDefaults.colors(
+                thumbColor = MaterialTheme.colorScheme.primary,
+                activeTrackColor = MaterialTheme.colorScheme.primary,
+                inactiveTrackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+            )
+        )
+    }
+    if (showDivider) SettingsRowDivider()
+}
+
+/** Logarithmic mapping used by the auto-delete slider. 0 means "off", 1..100 spans 50..5000. */
+fun autoDeleteLimitForProgress(progress: Float): Int {
+    if (progress <= 0.5f) return 0
+    val t = ((progress - 1f) / 99f).coerceIn(0f, 1f)
+    val raw = 50.0 * Math.pow(100.0, t.toDouble())
+    val rounded = if (raw < 1000.0) {
+        Math.round(raw / 50.0) * 50
+    } else {
+        Math.round(raw / 100.0) * 100
+    }
+    return rounded.toInt().coerceIn(50, 5000)
+}
+
+/** Inverse of [autoDeleteLimitForProgress], used to place the thumb for a stored limit. */
+fun progressForAutoDeleteLimit(limit: Int): Float {
+    if (limit <= 0) return 0f
+    val t = Math.log(limit / 50.0) / Math.log(100.0)
+    return (1f + t * 99f).toFloat().coerceIn(1f, 100f)
 }
 
 /**

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chat_cancel_selection">Cancel selection</string>
+    <string name="chat_react">React to message</string>
+    <string name="chat_message_info">Message info</string>
+    <string name="chat_delete_selected">Delete selected</string>
+    <string name="chat_back">Back</string>
+    <string name="chat_call_contact">Call contact</string>
+    <string name="chat_participant_settings">Notification settings for this sender</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_scroll_to_bottom">Scroll to bottom</string>
+    <string name="chat_copied">Copied to clipboard</string>
+    <string name="chat_copy">Copy</string>
+    <string name="chat_delete">Delete</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_close">Close</string>
+    <string name="chat_sending_in">Sending in %1$d s</string>
+    <string name="chat_sms_message">SMS message</string>
+</resources>

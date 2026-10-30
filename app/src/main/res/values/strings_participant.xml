@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="participant_add">Add</string>
+    <string name="participant_tier_title">Participant notification tier</string>
+    <string name="participant_sim_title">Preferred SIM card</string>
+    <string name="participant_tabs_title">Sender tabs (%1$d)</string>
+    <string name="participant_new_tab">New tab</string>
+    <string name="participant_no_tabs">No tabs created yet. Tap \'New Tab\' to organize this sender into groups like Family or Friends.</string>
+    <string name="participant_rules_title">Custom rules for this sender (%1$d)</string>
+    <string name="participant_add_rule">Add rule</string>
+    <string name="participant_no_rules">No sender-specific regex rules. Global filter rules will apply to incoming messages.</string>
+    <string name="participant_rule_name">Rule name (e.g. discount codes)</string>
+    <string name="participant_rule_pattern">Regex pattern</string>
+    <string name="participant_trigger">Trigger action:</string>
+    <string name="participant_save_rule">Save rule</string>
+</resources>

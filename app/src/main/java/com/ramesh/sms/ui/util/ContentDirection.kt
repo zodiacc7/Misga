@@ -1,12 +1,16 @@
 package com.ramesh.sms.ui.util
 
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextDirection
 
 /**
- * The app UI is English-only, but message bodies, snippets, contact names and
- * anything typed by users can be in RTL scripts (Persian, Arabic, Hebrew...).
- * Resolving the paragraph direction from the text content itself makes those
- * render with correct alignment and punctuation placement.
+ * Kept for call-site compatibility while the UI learns about RTL layouts.
+ *
+ * Text used to resolve its paragraph direction from the *content* itself. With a Persian (RTL)
+ * interface that made every LTR string — phone numbers, times, dates, SIM labels — start at the
+ * left edge while Persian text started at the right, so a conversation row showed the name, the
+ * SIM badge and the date jumbled on one side. Paragraph direction now follows the layout
+ * direction, which is what every platform text view does; the bidi algorithm still reorders
+ * Persian and Latin runs correctly inside the line.
  */
-fun TextStyle.contentAware(): TextStyle = copy(textDirection = TextDirection.Content)
+@Suppress("UNUSED_PARAMETER")
+fun TextStyle.contentAware(): TextStyle = this

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="chat_cancel_selection">لغو انتخاب</string>
+    <string name="chat_react">واکنش به پیام</string>
+    <string name="chat_message_info">اطلاعات پیام</string>
+    <string name="chat_delete_selected">حذف انتخاب‌شده‌ها</string>
+    <string name="chat_back">بازگشت</string>
+    <string name="chat_call_contact">تماس با مخاطب</string>
+    <string name="chat_participant_settings">تنظیمات اعلان برای این فرستنده</string>
+    <string name="chat_send">ارسال</string>
+    <string name="chat_scroll_to_bottom">رفتن به پایین</string>
+    <string name="chat_copied">در کلیپ‌بورد کپی شد</string>
+    <string name="chat_copy">کپی</string>
+    <string name="chat_delete">حذف</string>
+    <string name="chat_cancel">انصراف</string>
+    <string name="chat_close">بستن</string>
+    <string name="chat_sending_in">ارسال در %1$d ثانیه</string>
+    <string name="chat_sms_message">پیامک</string>
+</resources>

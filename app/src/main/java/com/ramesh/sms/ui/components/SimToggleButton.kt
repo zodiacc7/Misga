@@ -33,8 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ramesh.sms.R
 import com.ramesh.sms.data.model.SimInfo
 import com.ramesh.sms.theme.PillShape
 
@@ -79,7 +81,7 @@ fun SimToggleButton(
             ) {
                 Icon(
                     imageVector = Icons.Default.SimCard,
-                    contentDescription = "Switch SIM",
+                    contentDescription = stringResource(R.string.comp_switch_sim),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(16.dp)
                 )
@@ -135,7 +137,7 @@ fun SimToggleButton(
                         if (isSelected) {
                             Icon(
                                 imageVector = Icons.Default.Check,
-                                contentDescription = "Selected",
+                                contentDescription = stringResource(R.string.comp_selected),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )

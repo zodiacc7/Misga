@@ -32,6 +32,8 @@ object AppearanceStore {
     private const val KEY_ENTER_TO_SEND = "enter_to_send"
     private const val KEY_CHAR_COUNTER = "character_counter"
     private const val KEY_OTP_ACTION = "otp_copy_action"
+    private const val KEY_SWIPE_DELETE = "swipe_to_delete"
+    private const val KEY_MESSAGE_ANIMATION = "message_animation"
 
     private var prefs: SharedPreferences? = null
 
@@ -87,7 +89,9 @@ object AppearanceStore {
             showInboxAvatars = shared.getBoolean(KEY_INBOX_AVATARS, defaults.showInboxAvatars),
             enterToSend = shared.getBoolean(KEY_ENTER_TO_SEND, defaults.enterToSend),
             showCharacterCounter = shared.getBoolean(KEY_CHAR_COUNTER, defaults.showCharacterCounter),
-            otpCopyAction = shared.getBoolean(KEY_OTP_ACTION, defaults.otpCopyAction)
+            otpCopyAction = shared.getBoolean(KEY_OTP_ACTION, defaults.otpCopyAction),
+            swipeToDelete = shared.getBoolean(KEY_SWIPE_DELETE, defaults.swipeToDelete),
+            messageAnimation = shared.readEnum(KEY_MESSAGE_ANIMATION, defaults.messageAnimation)
         )
     }
 
@@ -109,6 +113,8 @@ object AppearanceStore {
             .putBoolean(KEY_ENTER_TO_SEND, appearance.enterToSend)
             .putBoolean(KEY_CHAR_COUNTER, appearance.showCharacterCounter)
             .putBoolean(KEY_OTP_ACTION, appearance.otpCopyAction)
+            .putBoolean(KEY_SWIPE_DELETE, appearance.swipeToDelete)
+            .putString(KEY_MESSAGE_ANIMATION, appearance.messageAnimation.name)
             .apply()
     }
 

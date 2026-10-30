@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="compose_new_message">پیام جدید</string>
+    <string name="compose_to_label">به (نام یا شماره)</string>
+    <string name="compose_to_placeholder">نام یا شمارهٔ تلفن را بنویسید…</string>
+    <string name="compose_no_contacts">مخاطبی پیدا نشد</string>
+    <string name="compose_send_to">ارسال به %1$s</string>
+    <string name="compose_start_conversation">شروع یک گفتگو</string>
+</resources>
