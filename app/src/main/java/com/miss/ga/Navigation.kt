@@ -12,6 +12,7 @@ import com.miss.ga.ui.screens.ChatScreen
 import com.miss.ga.ui.screens.ComposeScreen
 import com.miss.ga.ui.screens.ConversationsScreen
 import com.miss.ga.ui.screens.FilterStudioScreen
+import com.miss.ga.ui.screens.SettingsScreen
 import com.miss.ga.ui.viewmodel.ConversationsViewModel
 
 @Composable
@@ -55,6 +56,7 @@ fun MainNavigation(
                     onNavigateToFilterStudio = { backStack.add(FilterStudioNav) },
                     onNavigateToCompose = { backStack.add(ComposeNav()) },
                     onNavigateToTestLab = { backStack.add(TestLabNav) },
+                    onNavigateToSettings = { backStack.add(SettingsNav) },
                     viewModel = conversationsViewModel,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -63,6 +65,14 @@ fun MainNavigation(
                 ChatScreen(
                     nav = nav,
                     onBackClick = { backStack.removeLastOrNull() },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+            entry<SettingsNav> {
+                SettingsScreen(
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onOpenFilterStudio = { backStack.add(FilterStudioNav) },
+                    inboxViewModel = conversationsViewModel,
                     modifier = Modifier.fillMaxSize()
                 )
             }

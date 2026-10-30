@@ -29,18 +29,22 @@ fun SimBadge(
     modifier: Modifier = Modifier,
     isSent: Boolean = false,
     showIcon: Boolean = false,
-    compact: Boolean = false
+    compact: Boolean = false,
+    tint: Color? = null
 ) {
     val text = if (compact) "$slotNumber" else "SIM $slotNumber"
-    val containerColor = if (isSent) {
-        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
-    } else {
-        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-    }
-    val contentColor = if (isSent) {
+    // Bubbles can use custom Textra-style colours, so they pass their own tint.
+    val contentColor = tint?.copy(alpha = 0.9f) ?: if (isSent) {
         MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
     } else {
         MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val containerColor = if (tint != null) {
+        tint.copy(alpha = 0.15f)
+    } else if (isSent) {
+        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)
+    } else {
+        MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
     }
 
     Surface(

@@ -19,6 +19,7 @@ import com.miss.ga.data.util.AppPreferences
 import com.miss.ga.data.util.UserPreferences
 import com.miss.ga.receiver.NotificationActionReceiver
 import com.miss.ga.receiver.NotificationActions
+import com.miss.ga.theme.AppearanceStore
 
 class NotificationHelper private constructor(
     private val context: Context,
@@ -169,6 +170,12 @@ class NotificationHelper private constructor(
             builder.setSubText(simInfo.badgeLabel)
         }
 
+        // Like Textra: a one-tap "Copy 123456" action when the SMS is a login code.
+        if (AppearanceStore.isOtpCopyEnabled(context)) {
+            OtpDetector.findCode(body)?.let { code ->
+                builder.addAction(buildCopyCodeAction(threadId, code))
+            }
+        }
         buildActions(threadId, sender, messageId).forEach { builder.addAction(it) }
 
         try {
@@ -265,9 +272,30 @@ class NotificationHelper private constructor(
         return actions
     }
 
+    /** One-tap "Copy <code>" action; copies exactly the detected code. */
+    private fun buildCopyCodeAction(threadId: Long, code: String): NotificationCompat.Action {
+        val intent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActions.ACTION_COPY_OTP
+            putExtra(NotificationActions.EXTRA_THREAD_ID, threadId)
+            putExtra(NotificationActions.EXTRA_OTP_CODE, code)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            copyCodeRequestCode(threadId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Action.Builder(
+            android.R.drawable.ic_menu_edit,
+            context.getString(R.string.notification_action_copy_code, code),
+            pendingIntent
+        ).build()
+    }
+
     private fun replyRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt()
     private fun markReadRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt() xor 0x4D524400.toInt()
     private fun deleteRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt() xor 0x44454C00.toInt()
+    private fun copyCodeRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt() xor 0x4F545000.toInt()
 
     fun cancelNotification(threadId: Long) {
         notificationManager.cancel(notificationIdFor(threadId))
