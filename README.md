@@ -105,6 +105,10 @@ Then add the pattern in Filter Studio as a blocklist rule.
 Android 8.0 (API 26) or newer is required. MMS is not supported. Installation is side-by-side:
 Ramesh does not replace or upgrade an existing Misga install.
 
+**Development builds.** Every push to `main` publishes an unsigned debug APK as the
+[`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) pre-release. It uses
+the package id `com.ramesh.sms.dev`, so it installs next to the regular app.
+
 > Ramesh is distributed through GitHub Releases; there is no F-Droid listing for
 > `com.ramesh.sms` yet. The upstream Misga listing (`com.miss.ga`) is a different app.
 
@@ -256,6 +260,10 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 
 اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند. نصب
 کنار میسگا انجام می‌شود و رامش جایگزین یا به‌روزرسانی نصب فعلی نیست.
+
+**نسخه‌های آزمایشی.** با هر push روی `main` یک APK دیباگِ امضانشده در پیش‌انتشار
+[`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) منتشر می‌شود. شناسهٔ
+بستهٔ آن `com.ramesh.sms.dev` است، پس کنار نسخهٔ معمولی نصب می‌شود.
 
 > رامش از طریق GitHub Releases منتشر می‌شود و هنوز صفحه‌ای در F-Droid برای بستهٔ
 > `com.ramesh.sms` وجود ندارد. صفحهٔ فعلی F-Droid مربوط به میسگا (`com.miss.ga`) برنامهٔ دیگری است.
