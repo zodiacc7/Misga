@@ -9,10 +9,15 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import com.ramesh.sms.data.util.AppLanguage
+import com.ramesh.sms.data.util.AppPreferences
 
 private val LightColors = lightColorScheme(
     primary = md_theme_light_primary,
@@ -162,10 +167,23 @@ fun RameshTheme(
 
     val typography = remember(appearance.fontFamily) { typographyFor(appearance.fontFamily) }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        shapes = Shapes,
-        typography = typography,
-        content = content
-    )
+    // The chosen language decides the layout direction explicitly. Relying on the activity
+    // configuration alone left Persian builds laid out left-to-right in some cases, which pushed
+    // names, SIM badges and dates to the same side of a row.
+    val language = remember(context) { AppPreferences(context.applicationContext).appLanguage }
+    val systemDirection = LocalLayoutDirection.current
+    val direction = when (language) {
+        AppLanguage.PERSIAN -> LayoutDirection.Rtl
+        AppLanguage.ENGLISH -> LayoutDirection.Ltr
+        AppLanguage.SYSTEM -> systemDirection
+    }
+
+    CompositionLocalProvider(LocalLayoutDirection provides direction) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            shapes = Shapes,
+            typography = typography,
+            content = content
+        )
+    }
 }

@@ -31,7 +31,9 @@ data class Appearance(
     val showCharacterCounter: Boolean = true,
     val otpCopyAction: Boolean = true,
     /** Drag a conversation sideways to reveal a delete button. */
-    val swipeToDelete: Boolean = true
+    val swipeToDelete: Boolean = true,
+    /** How a message bubble appears when it enters the chat. */
+    val messageAnimation: MessageAnimation = MessageAnimation.FADE
 )
 
 enum class ThemeMode(val label: String) {
@@ -46,6 +48,14 @@ enum class BubbleStyle(val label: String, val cornerDp: Float, val tailDp: Float
     ROUNDED("Rounded", 20f, 0f),
     PILL("Pill", 24f, 0f),
     COMPACT("Compact", 10f, 7f)
+}
+
+/** Enter/exit animation used for message bubbles. */
+enum class MessageAnimation(val label: String) {
+    FADE("Fade"),
+    SLIDE("Windows"),
+    POP("Pop"),
+    NONE("None")
 }
 
 enum class ChatFontSize(val label: String, val scale: Float) {

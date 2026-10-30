@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.GroupAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -382,12 +381,6 @@ fun TabOptionsSheet(
                 icon = Icons.Default.Edit,
                 label = stringResource(R.string.tab_row_edit),
                 description = stringResource(R.string.tab_row_edit_desc),
-                onClick = onEdit
-            )
-            SheetRow(
-                icon = Icons.Default.GroupAdd,
-                label = stringResource(R.string.tab_row_senders),
-                description = stringResource(R.string.tab_row_senders_desc),
                 onClick = onEdit
             )
             SheetRow(

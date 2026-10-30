@@ -46,9 +46,6 @@
     <string name="settings_send_delay">تأخیر در ارسال</string>
     <string name="settings_send_delay_sub">هر پیام کمی نگه داشته می‌شود تا ارسال اشتباه قابل لغو باشد</string>
     <string name="settings_off">خاموش</string>
-    <string name="settings_seconds_3">۳ ثانیه</string>
-    <string name="settings_seconds_5">۵ ثانیه</string>
-    <string name="settings_seconds_10">۱۰ ثانیه</string>
     <string name="settings_inbox_header">صندوق ورودی</string>
     <string name="settings_inbox_sub">نحوهٔ نمایش گفتگوها</string>
     <string name="settings_tabs">تب‌های گفتگو</string>
@@ -83,10 +80,6 @@
     <string name="settings_storage_sub">نگذارید گفتگوها بی‌نهایت بزرگ شوند</string>
     <string name="settings_auto_delete">حذف خودکار پیام‌های قدیمی</string>
     <string name="settings_auto_delete_sub">برای هر گفتگو. پیام‌های قدیمی‌تر پس از رسیدن به حد مجاز از گوشی حذف می‌شوند؛ پیش‌فرض خاموش است.</string>
-    <string name="settings_500">۵۰۰ پیام</string>
-    <string name="settings_1000">۱٬۰۰۰ پیام</string>
-    <string name="settings_2000">۲٬۰۰۰ پیام</string>
-    <string name="settings_5000">۵٬۰۰۰ پیام</string>
     <string name="settings_reset_header">بازنشانی</string>
     <string name="settings_restore_look">بازگردانی ظاهر پیش‌فرض</string>
     <string name="settings_restore_look_sub">تم فیروزه‌ای، حباب Textra، بدون پس‌زمینه</string>
@@ -97,4 +90,19 @@
     <string name="settings_today">امروز</string>
     <string name="settings_swipe_delete">حذف گفتگو با کشیدن</string>
     <string name="settings_swipe_delete_sub">با کشیدن چپ یا راست یک گفتگو، دکمهٔ حذف برای پنج ثانیه نمایش داده می‌شود</string>
+    <string name="settings_seconds_value">%1$d ثانیه</string>
+    <string name="settings_messages_count">%1$s پیام</string>
+    <string name="settings_message_animation">انیمیشن پیام‌ها</string>
+    <string name="settings_message_animation_sub">نحوهٔ ظاهر شدن پیام جدید در گفتگو</string>
+    <string name="settings_test_notification">ارسال نوتیفیکیشن آزمایشی</string>
+    <string name="settings_test_notification_sub">بررسی نوتیفیکیشن، صدا و حریم صفحهٔ قفل</string>
+    <string name="settings_test_notification_sent">نوتیفیکیشن آزمایشی ارسال شد</string>
+    <string name="settings_test_notification_blocked">نوتیفیکیشن‌های رامش خاموش است</string>
+    <string name="settings_about_header">درباره</string>
+    <string name="settings_about_sub">اطلاعات نسخه و پروژه</string>
+    <string name="settings_about_app">دربارهٔ رامش</string>
+    <string name="settings_about_version">نسخهٔ %1$s</string>
+    <string name="settings_about_body">رامش یک پیام‌رسان SMS سریع و خصوصی با ظاهر سبک Textra، رابط فارسی و انگلیسی، تب‌های فرستنده، فیلتر اسپم و بدون تبلیغات و ردیاب است.</string>
+    <string name="settings_about_source">کد منبع: github.com/zodiacc7/ramesh</string>
+    <string name="settings_about_close">بستن</string>
 </resources>

@@ -1,6 +1,10 @@
 package com.ramesh.sms.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -24,7 +28,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Shield
@@ -47,6 +53,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -55,11 +62,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
 import com.ramesh.sms.R
 import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.LockScreenPrivacy
+import com.ramesh.sms.engine.NotificationHelper
 import com.ramesh.sms.theme.AccentColor
 import com.ramesh.sms.theme.Appearance
 import com.ramesh.sms.theme.AppearanceStore
@@ -68,6 +77,7 @@ import com.ramesh.sms.theme.BubbleTone
 import com.ramesh.sms.theme.ChatBackdrop
 import com.ramesh.sms.theme.ChatFontFamily
 import com.ramesh.sms.theme.ChatFontSize
+import com.ramesh.sms.theme.MessageAnimation
 import com.ramesh.sms.theme.ThemeMode
 import com.ramesh.sms.theme.SquircleCardShape
 import com.ramesh.sms.theme.bubbleBackground
@@ -82,23 +92,11 @@ import com.ramesh.sms.ui.components.SettingsColorChoiceRow
 import com.ramesh.sms.ui.components.SettingsGroup
 import com.ramesh.sms.ui.components.SettingsRowDivider
 import com.ramesh.sms.ui.components.SettingsSectionHeader
+import com.ramesh.sms.ui.components.SettingsSliderRow
+import com.ramesh.sms.ui.components.autoDeleteLimitForProgress
+import com.ramesh.sms.ui.components.progressForAutoDeleteLimit
 import com.ramesh.sms.ui.components.SettingsSwitchRow
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
-
-private fun sendDelayOptions(context: android.content.Context): List<Pair<Int, String>> = listOf(
-    0 to context.getString(R.string.settings_off),
-    3 to context.getString(R.string.settings_seconds_3),
-    5 to context.getString(R.string.settings_seconds_5),
-    10 to context.getString(R.string.settings_seconds_10)
-)
-
-private fun autoDeleteOptions(context: android.content.Context): List<Pair<Int, String>> = listOf(
-    0 to context.getString(R.string.settings_off),
-    500 to context.getString(R.string.settings_500),
-    1_000 to context.getString(R.string.settings_1000),
-    2_000 to context.getString(R.string.settings_2000),
-    5_000 to context.getString(R.string.settings_5000)
-)
 
 private val ToneDotColors: List<Pair<String, androidx.compose.ui.graphics.Color?>> =
     BubbleTone.values().map { tone ->
@@ -125,6 +123,48 @@ fun SettingsScreen(
     val look = AppearanceStore.current
     val inboxState by inboxViewModel.uiState.collectAsStateWithLifecycle()
     var showResetDialog by remember { mutableStateOf(false) }
+    var showAboutDialog by remember { mutableStateOf(false) }
+
+    // Sliders keep their own value while dragging so the preference is only written once the
+    // user lets go; that avoids a disk write on every pixel.
+    var sendDelay by remember(inboxState.sendDelaySeconds) {
+        mutableFloatStateOf(inboxState.sendDelaySeconds.toFloat().coerceIn(0f, 9f))
+    }
+    var autoDeleteProgress by remember(inboxState.autoDeleteLimit) {
+        mutableFloatStateOf(progressForAutoDeleteLimit(inboxState.autoDeleteLimit))
+    }
+
+    val appVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty()
+    }
+
+    fun sendTestNotification() {
+        val shown = NotificationHelper.getInstance(context).showTestNotification()
+        Toast.makeText(
+            context,
+            context.getString(
+                if (shown) R.string.settings_test_notification_sent
+                else R.string.settings_test_notification_blocked
+            ),
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            sendTestNotification()
+        } else {
+            Toast.makeText(
+                context,
+                context.getString(R.string.settings_test_notification_blocked),
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     fun update(transform: (Appearance) -> Appearance) {
         AppearanceStore.update(context, transform)
@@ -382,15 +422,29 @@ fun SettingsScreen(
                         onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
                         showDivider = true
                     )
-                    SettingsChoiceRow(
+                    SettingsSliderRow(
                         title = stringResource(R.string.settings_send_delay),
                         subtitle = stringResource(R.string.settings_send_delay_sub),
-                        options = sendDelayOptions(context).map { it.second },
-                        selectedIndex = sendDelayOptions(context).indexOfFirst {
-                            it.first == inboxState.sendDelaySeconds
-                        }.coerceAtLeast(0),
+                        value = sendDelay,
+                        valueRange = 0f..9f,
+                        steps = 8,
+                        valueLabel = if (sendDelay < 0.5f) {
+                            stringResource(R.string.settings_off)
+                        } else {
+                            stringResource(R.string.settings_seconds_value, sendDelay.toInt())
+                        },
+                        onValueChange = { sendDelay = it },
+                        onValueChangeFinished = {
+                            inboxViewModel.setSendDelaySeconds(sendDelay.toInt().coerceIn(0, 9))
+                        }
+                    )
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_message_animation),
+                        subtitle = stringResource(R.string.settings_message_animation_sub),
+                        options = MessageAnimation.entries.map { it.label },
+                        selectedIndex = look.messageAnimation.ordinal,
                         onSelect = { index ->
-                            inboxViewModel.setSendDelaySeconds(sendDelayOptions(context)[index].first)
+                            update { it.copy(messageAnimation = MessageAnimation.entries[index]) }
                         }
                     )
                 }
@@ -466,6 +520,24 @@ fun SettingsScreen(
                         onCheckedChange = { enabled -> inboxViewModel.setDeliveryReportsEnabled(enabled) },
                         showDivider = true
                     )
+                    SettingsActionRow(
+                        title = stringResource(R.string.settings_test_notification),
+                        subtitle = stringResource(R.string.settings_test_notification_sub),
+                        icon = Icons.Default.NotificationsActive,
+                        showDivider = true,
+                        onClick = {
+                            val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) != PackageManager.PERMISSION_GRANTED
+                            if (needsPermission) {
+                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            } else {
+                                sendTestNotification()
+                            }
+                        }
+                    )
                     SettingsChoiceRow(
                         title = stringResource(R.string.settings_lock_screen),
                         subtitle = stringResource(R.string.settings_lock_screen_sub),
@@ -533,16 +605,44 @@ fun SettingsScreen(
             }
             item(key = "storage-group") {
                 SettingsGroup {
-                    SettingsChoiceRow(
+                    val pendingAutoDelete = autoDeleteLimitForProgress(autoDeleteProgress)
+                    SettingsSliderRow(
                         title = stringResource(R.string.settings_auto_delete),
                         subtitle = stringResource(R.string.settings_auto_delete_sub),
-                        options = autoDeleteOptions(context).map { it.second },
-                        selectedIndex = autoDeleteOptions(context).indexOfFirst {
-                            it.first == inboxState.autoDeleteLimit
-                        }.coerceAtLeast(0),
-                        onSelect = { index ->
-                            inboxViewModel.setAutoDeleteLimit(autoDeleteOptions(context)[index].first)
+                        value = autoDeleteProgress,
+                        valueRange = 0f..100f,
+                        valueLabel = if (pendingAutoDelete == 0) {
+                            stringResource(R.string.settings_off)
+                        } else {
+                            stringResource(
+                                R.string.settings_messages_count,
+                                java.text.NumberFormat.getIntegerInstance()
+                                    .format(pendingAutoDelete.toLong())
+                            )
+                        },
+                        onValueChange = { autoDeleteProgress = it },
+                        onValueChangeFinished = {
+                            inboxViewModel.setAutoDeleteLimit(
+                                autoDeleteLimitForProgress(autoDeleteProgress)
+                            )
                         }
+                    )
+                }
+            }
+
+            item(key = "about-header") {
+                SettingsSectionHeader(
+                    title = stringResource(R.string.settings_about_header),
+                    subtitle = stringResource(R.string.settings_about_sub)
+                )
+            }
+            item(key = "about-group") {
+                SettingsGroup {
+                    SettingsActionRow(
+                        title = stringResource(R.string.settings_about_app),
+                        subtitle = stringResource(R.string.settings_about_version, appVersion),
+                        icon = Icons.Default.Info,
+                        onClick = { showAboutDialog = true }
                     )
                 }
             }
@@ -561,6 +661,54 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { showAboutDialog = false },
+            shape = SquircleCardShape,
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.settings_about_version, appVersion),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.settings_about_body),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = stringResource(R.string.settings_about_source),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAboutDialog = false }) {
+                    Text(stringResource(R.string.settings_about_close), fontWeight = FontWeight.Bold)
+                }
+            }
+        )
     }
 
     if (showResetDialog) {

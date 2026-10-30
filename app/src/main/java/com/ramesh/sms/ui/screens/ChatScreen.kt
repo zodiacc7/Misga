@@ -70,7 +70,11 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.MutableTransitionState
+import com.ramesh.sms.theme.messageEnterTransition
+import com.ramesh.sms.theme.messageExitTransition
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -999,6 +1003,17 @@ private fun ChatMessageList(
             } else {
                 null
             }
+            // Each fresh bubble animates in with the style picked in Settings. Older messages
+            // (history, scroll-backs) start fully visible so the list never performs a slideshow.
+            val bubbleVisible = remember(message.id) {
+                val isFresh = System.currentTimeMillis() - message.date < 15_000L
+                MutableTransitionState(!isFresh).apply { targetState = true }
+            }
+            AnimatedVisibility(
+                visibleState = bubbleVisible,
+                enter = messageEnterTransition(look.messageAnimation),
+                exit = messageExitTransition(look.messageAnimation)
+            ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 if (headerText != null) {
                     ChatDateHeader(text = headerText)
@@ -1050,6 +1065,7 @@ private fun ChatMessageList(
                         avatar = avatarSlot
                     )
                 }
+            }
             }
         }
         if (isLoadingOlder) {

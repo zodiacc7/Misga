@@ -14,4 +14,6 @@
     <string name="notification_action_delete">حذف</string>
     <string name="notification_user_me">من</string>
     <string name="notification_new_message">پیام تازه</string>
+    <string name="notification_test_title">نوتیفیکیشن آزمایشی رامش</string>
+    <string name="notification_test_body">اگر این پیام را می‌بینید، نوتیفیکیشن‌ها درست کار می‌کنند.</string>
 </resources>

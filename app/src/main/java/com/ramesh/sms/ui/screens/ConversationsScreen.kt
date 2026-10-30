@@ -39,6 +39,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
@@ -84,6 +85,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -99,6 +101,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -192,6 +196,16 @@ fun ConversationsScreen(
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    // The search field is hidden behind a magnifier button until the user asks for it.
+    var isSearchOpen by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(isSearchOpen) {
+        if (isSearchOpen) {
+            // Let the field enter the composition before asking for focus.
+            delay(120)
+            runCatching { searchFocusRequester.requestFocus() }
+        }
+    }
     val swipeToDelete = AppearanceStore.current.swipeToDelete
     val undoScope = rememberCoroutineScope()
 
@@ -218,6 +232,10 @@ fun ConversationsScreen(
 
     BackHandler(enabled = isSelectionMode) {
         viewModel.clearSelection()
+    }
+    BackHandler(enabled = isSearchOpen && !isSelectionMode) {
+        viewModel.onSearchQueryChanged("")
+        isSearchOpen = false
     }
 
     // "Contacts only" is a filter of the All tab; custom tabs keep their own scope.
@@ -254,6 +272,7 @@ fun ConversationsScreen(
                 onDeleteSelected = { showBatchDeleteDialog = true },
                 showTabs = state.showTabs,
                 onAddToTab = { showAddToTabDialog = true },
+                onOpenSearch = { isSearchOpen = true },
                 onToggleContactsOnly = {
                     viewModel.toggleContactsOnly()
                     val msg = if (!contactsOnlyActive) {
@@ -318,7 +337,7 @@ fun ConversationsScreen(
                 .padding(innerPadding)
         ) {
             AnimatedVisibility(
-                visible = !isSelectionMode,
+                visible = !isSelectionMode && isSearchOpen,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
@@ -337,27 +356,42 @@ fun ConversationsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = stringResource(R.string.inbox_search),
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         OutlinedTextField(
                             value = state.searchQuery,
                             onValueChange = { viewModel.onSearchQueryChanged(it) },
                             placeholder = {
                                 Text(
-                                    "Search conversations or numbers...",
+                                    stringResource(R.string.inbox_search_hint),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.outline
                                 )
                             },
                             trailingIcon = {
-                                if (state.searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (state.searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                            Icon(
+                                                Icons.Default.Close,
+                                                contentDescription = stringResource(R.string.inbox_clear_search),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    // Closes the search and returns to the plain inbox.
+                                    IconButton(
+                                        onClick = {
+                                            viewModel.onSearchQueryChanged("")
+                                            isSearchOpen = false
+                                        }
+                                    ) {
                                         Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = stringResource(R.string.inbox_clear_search),
+                                            Icons.AutoMirrored.Filled.ArrowBack,
+                                            contentDescription = stringResource(R.string.inbox_close_search),
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -371,7 +405,9 @@ fun ConversationsScreen(
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
                             ),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusRequester(searchFocusRequester)
                         )
                     }
                 }
@@ -890,6 +926,7 @@ private fun ConversationsTopBar(
     visibleThreads: List<ConversationThread>,
     showContactsOnly: Boolean,
     showContactsToggle: Boolean = true,
+    onOpenSearch: () -> Unit = {},
     threads: List<ConversationThread>,
     isDebuggable: Boolean,
     onClearSelection: () -> Unit,
@@ -997,6 +1034,19 @@ private fun ConversationsTopBar(
                     animationSpec = spring(),
                     label = "contactsToggleTint"
                 )
+
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    IconButton(onClick = onOpenSearch) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = stringResource(R.string.inbox_search),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
 
                 if (showContactsToggle) {
                     Surface(
@@ -1311,7 +1361,6 @@ private fun ConversationItem(
         Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1320,9 +1369,13 @@ private fun ConversationItem(
                     fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.ExtraBold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
                     if (simSlotNumber != null) {
                         SimBadge(slotNumber = simSlotNumber)
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1340,8 +1393,7 @@ private fun ConversationItem(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = thread.snippet,

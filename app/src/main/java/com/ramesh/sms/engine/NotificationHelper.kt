@@ -355,6 +355,47 @@ class NotificationHelper private constructor(
     private fun deleteRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt() xor 0x44454C00.toInt()
     private fun copyCodeRequestCode(threadId: Long): Int = (threadId xor (threadId ushr 32)).toInt() xor 0x4F545000.toInt()
 
+    /**
+     * Fires a notification through the same channel and lock-screen rules as a real message, so
+     * the user can check that notifications, sounds and privacy settings work on their device.
+     */
+    fun showTestNotification(): Boolean {
+        if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false
+        val openIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentPendingIntent = PendingIntent.getActivity(
+            context,
+            TEST_NOTIFICATION_ID,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val body = context.getString(R.string.notification_test_body)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ALERT_ID)
+            .setSmallIcon(android.R.drawable.sym_action_chat)
+            .setContentTitle(context.getString(R.string.notification_test_title))
+            .setContentText(body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setContentIntent(contentPendingIntent)
+            .setWhen(System.currentTimeMillis())
+        applyLockScreenPrivacy(
+            builder = builder,
+            displayName = context.getString(R.string.notification_test_title),
+            channelId = CHANNEL_ALERT_ID,
+            contentPendingIntent = contentPendingIntent
+        )
+        return try {
+            NotificationManagerCompat.from(context).notify(TEST_NOTIFICATION_ID, builder.build())
+            true
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Missing notification permission for the test notification", e)
+            false
+        }
+    }
+
     fun cancelNotification(threadId: Long) {
         notificationManager.cancel(notificationIdFor(threadId))
     }

@@ -18,8 +18,6 @@
     <string name="tab_save">Save</string>
     <string name="tab_row_edit">Edit tab</string>
     <string name="tab_row_edit_desc">Name, senders and filters</string>
-    <string name="tab_row_senders">Senders and filters</string>
-    <string name="tab_row_senders_desc">Who appears in this tab</string>
     <string name="tab_row_delete">Delete tab</string>
     <string name="tab_create_title">Create tab</string>
     <string name="tab_create_sub">Organize conversations by group (e.g. Family, Friends, Work).</string>

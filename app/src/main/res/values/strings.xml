@@ -14,4 +14,6 @@
     <string name="notification_action_delete">Delete</string>
     <string name="notification_user_me">Me</string>
     <string name="notification_new_message">New message</string>
+    <string name="notification_test_title">Ramesh test notification</string>
+    <string name="notification_test_body">If you can read this, notifications are working.</string>
 </resources>

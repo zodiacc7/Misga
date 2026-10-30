@@ -1,0 +1,8 @@
+• Search is now a magnifier button in the top bar and opens when tapped.
+• New About section with the app version and project information.
+• Send delay is a 0-9 second slider.
+• Auto-delete old messages is a logarithmic slider up to 5000 messages.
+• Send a test notification from Settings to check sound and lock-screen privacy.
+• Pick how new messages animate: Fade, Windows (slide), Pop or None.
+• The tab menu no longer shows two identical entries; "Edit tab" holds name, senders and filters.
+• Fixed the Persian (RTL) layout that pushed the contact name, SIM badge and date together on one side.

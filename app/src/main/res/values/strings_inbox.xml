@@ -33,4 +33,6 @@
     <string name="inbox_conversation_deleted">Conversation deleted</string>
     <string name="inbox_undo">Undo</string>
     <string name="inbox_empty_snippet">No messages</string>
+    <string name="inbox_search_hint">Search conversations or numbers...</string>
+    <string name="inbox_close_search">Close search</string>
 </resources>

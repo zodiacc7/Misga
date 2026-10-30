@@ -33,4 +33,6 @@
     <string name="inbox_conversation_deleted">گفتگو حذف شد</string>
     <string name="inbox_undo">بازگردانی</string>
     <string name="inbox_empty_snippet">پیامی نیست</string>
+    <string name="inbox_search_hint">جست‌وجوی گفتگو یا شماره…</string>
+    <string name="inbox_close_search">بستن جست‌وجو</string>
 </resources>
