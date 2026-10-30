@@ -1,0 +1,32 @@
+package com.ramesh.sms
+
+import androidx.navigation3.runtime.NavKey
+import kotlinx.serialization.Serializable
+
+@Serializable
+data object ConversationsNav : NavKey
+
+@Serializable
+data class ChatNav(
+    val threadId: Long,
+    val address: String,
+    val contactName: String? = null,
+    val initialMessageId: Long? = null,
+    val initialBody: String? = null
+) : NavKey
+
+@Serializable
+data object FilterStudioNav : NavKey
+
+@Serializable
+data object SettingsNav : NavKey
+
+@Serializable
+data class ComposeNav(
+    val address: String = "",
+    val body: String = ""
+) : NavKey
+
+@Serializable
+data object TestLabNav : NavKey
+

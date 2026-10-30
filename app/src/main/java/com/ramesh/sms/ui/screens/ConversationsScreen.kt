@@ -1,0 +1,1523 @@
+package com.ramesh.sms.ui.screens
+
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Contacts
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Deselect
+import androidx.compose.material.icons.filled.DriveFileMove
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.MarkChatRead
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SelectAll
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import com.ramesh.sms.ChatNav
+import com.ramesh.sms.R
+import com.ramesh.sms.data.model.ConversationThread
+import com.ramesh.sms.data.model.SearchMessageResult
+import androidx.compose.ui.semantics.Role
+import com.ramesh.sms.data.model.SenderTab
+import com.ramesh.sms.theme.AppearanceStore
+import com.ramesh.sms.theme.PillShape
+import com.ramesh.sms.theme.Vazirmatn
+import com.ramesh.sms.ui.components.AddToTabDialog
+import com.ramesh.sms.ui.components.ContactProfileDialog
+import com.ramesh.sms.ui.components.ConversationAvatar
+import com.ramesh.sms.ui.components.CreateTabDialog
+import com.ramesh.sms.ui.components.CustomizationSheet
+import com.ramesh.sms.ui.components.DefaultSmsBanner
+import com.ramesh.sms.ui.components.DeleteTabDialog
+import com.ramesh.sms.ui.components.ManageTabSendersDialog
+import com.ramesh.sms.ui.components.RenameTabDialog
+import com.ramesh.sms.ui.components.SenderTabRow
+import com.ramesh.sms.ui.components.SimBadge
+import com.ramesh.sms.ui.components.SimFilterRow
+import com.ramesh.sms.ui.components.TabOptionsMenuSheet
+import com.ramesh.sms.ui.util.SmsDateFormats
+import com.ramesh.sms.ui.util.senderDisplayName
+import com.ramesh.sms.ui.util.contentAware
+import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+import com.ramesh.sms.util.DefaultSmsAppHelper
+import java.util.Locale
+
+private val ListBottomFabPadding = 88.dp
+private val AvatarDividerInset = 78.dp
+private val NoSelectionIds: Set<Long> = emptySet()
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConversationsScreen(
+    onNavigateToChat: (ChatNav) -> Unit,
+    onNavigateToFilterStudio: () -> Unit,
+    onNavigateToCompose: () -> Unit,
+    onNavigateToTestLab: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    viewModel: ConversationsViewModel = viewModel(),
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedThreadIds = viewModel.selectedThreadIds
+    val isSelectionMode = viewModel.isSelectionMode
+    val context = LocalContext.current
+
+    val defaultSmsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        viewModel.refreshDefaultSmsStatus()
+        viewModel.loadThreads(force = true)
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onInboxResumed()
+    }
+
+    val openChat: (ChatNav) -> Unit = { nav ->
+        viewModel.clearUnreadForThread(nav.threadId)
+        onNavigateToChat(nav)
+    }
+
+    val simSlotMap = remember(state.availableSims) {
+        state.availableSims.associate { it.subscriptionId to it.slotNumber }
+    }
+    val hasMultipleSims = state.availableSims.size > 1
+
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+    var showCreateTabDialog by remember { mutableStateOf(false) }
+    var tabToRename by remember { mutableStateOf<SenderTab?>(null) }
+    var tabToDelete by remember { mutableStateOf<SenderTab?>(null) }
+    var tabToManageSenders by remember { mutableStateOf<SenderTab?>(null) }
+    var tabForOptionsMenu by remember { mutableStateOf<SenderTab?>(null) }
+    var showAddToTabDialog by remember { mutableStateOf(false) }
+    var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
+    var showCustomizationSheet by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isSelectionMode) {
+        viewModel.clearSelection()
+    }
+
+    val currentlyVisibleThreads = remember(state.filteredThreads, state.showContactsOnly) {
+        if (state.showContactsOnly) state.filteredThreads.filter { it.isContact } else state.filteredThreads
+    }
+    val isDebuggable = remember(context) {
+        (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
+
+    Scaffold(
+        topBar = {
+            ConversationsTopBar(
+                isSelectionMode = isSelectionMode,
+                selectedThreadIds = selectedThreadIds,
+                visibleThreads = currentlyVisibleThreads,
+                showContactsOnly = state.showContactsOnly,
+                threads = state.threads,
+                isDebuggable = isDebuggable,
+                onClearSelection = { viewModel.clearSelection() },
+                onSelectAll = { viewModel.selectAllThreads() },
+                onMarkSelectedRead = {
+                    viewModel.markSelectedConversationsRead { count ->
+                        Toast.makeText(
+                            context,
+                            "Marked $count conversation${if (count > 1) "s" else ""} as read",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onDeleteSelected = { showBatchDeleteDialog = true },
+                showTabs = state.showTabs,
+                onAddToTab = { showAddToTabDialog = true },
+                onToggleContactsOnly = {
+                    viewModel.toggleContactsOnly()
+                    val msg = if (!state.showContactsOnly) "Showing contacts only" else "Showing all conversations"
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                },
+                onMarkAllRead = {
+                    val hasUnread = state.threads.any { it.unreadCount > 0 }
+                    if (hasUnread) {
+                        viewModel.markAllConversationsRead {
+                            Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "All conversations are already read", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onNavigateToTestLab = onNavigateToTestLab,
+                onNavigateToFilterStudio = onNavigateToFilterStudio,
+                onOpenCustomization = { showCustomizationSheet = true },
+                onOpenSettings = onNavigateToSettings
+            )
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = !isSelectionMode,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = onNavigateToCompose,
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    text = {
+                        Text(
+                            "New Message",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = PillShape
+                )
+            }
+        },
+        modifier = modifier
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AnimatedVisibility(
+                visible = !isSelectionMode,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Surface(
+                    shape = PillShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        OutlinedTextField(
+                            value = state.searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChanged(it) },
+                            placeholder = {
+                                Text(
+                                    "Search conversations or numbers...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            },
+                            trailingIcon = {
+                                if (state.searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Clear search",
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            },
+                            singleLine = true,
+                            textStyle = LocalTextStyle.current.contentAware(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(
+                visible = !isSelectionMode && state.showTabs,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                SenderTabRow(
+                    tabs = state.tabs,
+                    selectedTabId = state.selectedTabId,
+                    threads = state.threads,
+                    onSelectTab = { viewModel.selectTab(it) },
+                    onCreateTabClick = { showCreateTabDialog = true },
+                    onTabOptionsClick = { tabForOptionsMenu = it },
+                    onReorderTabs = { viewModel.reorderTabs(it) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            AnimatedVisibility(
+                visible = !isSelectionMode && hasMultipleSims && state.showSimFilter,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                SimFilterRow(
+                    availableSims = state.availableSims,
+                    selectedSubId = state.selectedSimFilterSubId,
+                    threads = state.threads,
+                    onSelectSubId = { viewModel.selectSimFilter(it) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            if (!state.hasSmsPermission) {
+                Surface(
+                    shape = PillShape,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.sms_permission_needed),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(
+                            onClick = {
+                                val settingsIntent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = Uri.fromParts("package", context.packageName, null)
+                                }
+                                context.startActivity(settingsIntent)
+                            }
+                        ) {
+                            Text(stringResource(R.string.open_settings))
+                        }
+                    }
+                }
+            }
+
+            val loadError = state.error
+            if (loadError != null && state.hasSmsPermission) {
+                Surface(
+                    shape = PillShape,
+                    color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = loadError,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { viewModel.loadThreads(force = true) }) {
+                            Text(stringResource(R.string.retry))
+                        }
+                    }
+                }
+            }
+
+            if (!state.isDefaultSmsApp) {
+                DefaultSmsBanner(
+                    onRequestDefault = {
+                        DefaultSmsAppHelper.requestDefaultSmsApp(context) { intent ->
+                            defaultSmsLauncher.launch(intent)
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            val isSearchActive = state.searchQuery.isNotBlank()
+            val displayedThreads = currentlyVisibleThreads
+            val displayedMessages = remember(state.matchingMessages, state.showContactsOnly) {
+                if (state.showContactsOnly) {
+                    state.matchingMessages.filter { !it.contactName.isNullOrBlank() }
+                } else {
+                    state.matchingMessages
+                }
+            }
+
+            if (state.isLoading && state.threads.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                }
+            } else if (isSearchActive) {
+                val hasResults = displayedThreads.isNotEmpty() || displayedMessages.isNotEmpty()
+
+                if (state.isSearching && !hasResults) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                } else if (!hasResults) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.size(80.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "No messages",
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(40.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = if (state.showContactsOnly) "No contact messages match \"${state.searchQuery}\"" else "No messages match \"${state.searchQuery}\"",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (state.showContactsOnly) "Try a different keyword or toggle off the contacts filter" else "Try searching for a different keyword or contact name",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = ListBottomFabPadding)
+                    ) {
+                        if (displayedThreads.isNotEmpty()) {
+                            item(key = "header_conversations") {
+                                SearchSectionHeader(
+                                    title = "CONVERSATIONS",
+                                    count = displayedThreads.size
+                                )
+                            }
+                            items(
+                                items = displayedThreads,
+                                key = { "thread_${it.threadId}" },
+                                contentType = { "thread" }
+                            ) { thread ->
+                                ConversationItem(
+                                    thread = thread,
+                                    selectedIds = NoSelectionIds,
+                                    isSelectionMode = false,
+                                    simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                                    onClick = {
+                                        openChat(
+                                            ChatNav(
+                                                threadId = thread.threadId,
+                                                address = thread.address,
+                                                contactName = thread.contactName
+                                            )
+                                        )
+                                    },
+                                    onLongClick = {},
+                                    onAvatarClick = {
+                                        activeProfileDialogInfo = ProfileDialogData(
+                                            threadId = thread.threadId,
+                                            address = thread.address,
+                                            contactName = thread.contactName,
+                                            photoUri = thread.photoUri,
+                                            contactLookupUri = thread.contactLookupUri,
+                                            isContact = thread.isContact
+                                        )
+                                    }
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = AvatarDividerInset, end = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                )
+                            }
+                        }
+
+                        if (displayedMessages.isNotEmpty()) {
+                            item(key = "header_messages") {
+                                SearchSectionHeader(
+                                    title = "MESSAGES",
+                                    count = displayedMessages.size
+                                )
+                            }
+                            items(
+                                items = displayedMessages,
+                                key = { "msg_${it.messageId}" },
+                                contentType = { "search_msg" }
+                            ) { msg ->
+                                SearchMessageResultItem(
+                                    item = msg,
+                                    searchQuery = state.searchQuery,
+                                    simSlotNumber = if (hasMultipleSims) simSlotMap[msg.subId] else null,
+                                    onClick = {
+                                        openChat(
+                                            ChatNav(
+                                                threadId = msg.threadId,
+                                                address = msg.address,
+                                                contactName = msg.contactName,
+                                                initialMessageId = msg.messageId
+                                            )
+                                        )
+                                    },
+                                    onAvatarClick = {
+                                        activeProfileDialogInfo = ProfileDialogData(
+                                            threadId = msg.threadId,
+                                            address = msg.address,
+                                            contactName = msg.contactName,
+                                            photoUri = msg.photoUri,
+                                            contactLookupUri = msg.contactLookupUri,
+                                            isContact = !msg.contactName.isNullOrBlank()
+                                        )
+                                    }
+                                )
+                                HorizontalDivider(
+                                    modifier = Modifier.padding(start = AvatarDividerInset, end = 16.dp),
+                                    thickness = 0.5.dp,
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else if (displayedThreads.isEmpty()) {
+                val selectedTab = if (state.showTabs) state.selectedTabId?.let { id -> state.tabs.find { it.id == id } } else null
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (selectedTab != null) Icons.Default.FolderOpen
+                                    else if (state.showContactsOnly) Icons.Default.Contacts
+                                    else Icons.Default.Shield,
+                                    contentDescription = "No messages",
+                                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (selectedTab != null) "No conversations in \"${selectedTab.name}\""
+                            else if (state.showContactsOnly) "No contacts found"
+                            else "No SMS messages found",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = if (selectedTab != null) {
+                                if (selectedTab.senderAddresses.isEmpty()) {
+                                    "No senders have been added to this tab yet"
+                                } else {
+                                    "None of the senders in this tab have messages in your inbox"
+                                }
+                            }
+                            else if (state.showContactsOnly) "Conversations with saved contacts will appear here"
+                            else "Incoming SMS messages will appear here",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        if (selectedTab != null) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            FilledTonalButton(
+                                onClick = { tabToManageSenders = selectedTab },
+                                shape = PillShape
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Manage Senders", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            } else {
+                ConversationsInboxList(
+                    threads = displayedThreads,
+                    selectedIds = selectedThreadIds,
+                    isSelectionMode = isSelectionMode,
+                    simSlotMap = simSlotMap,
+                    hasMultipleSims = hasMultipleSims,
+                    onOpenChat = openChat,
+                    onToggleSelect = viewModel::toggleSelectThread,
+                    onEnterSelection = viewModel::enterSelectionMode,
+                    onAvatarClick = { thread ->
+                        activeProfileDialogInfo = ProfileDialogData(
+                            threadId = thread.threadId,
+                            address = thread.address,
+                            contactName = thread.contactName,
+                            photoUri = thread.photoUri,
+                            contactLookupUri = thread.contactLookupUri,
+                            isContact = thread.isContact
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    if (showBatchDeleteDialog) {
+        BatchDeleteConversationsDialog(
+            selectedThreadIds = selectedThreadIds,
+            onDismiss = { showBatchDeleteDialog = false },
+            onConfirm = { deletedCount ->
+                Toast.makeText(
+                    context,
+                    "Deleted $deletedCount conversation${if (deletedCount > 1) "s" else ""}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            },
+            onDelete = { onComplete -> viewModel.deleteSelectedConversations(onComplete) }
+        )
+    }
+
+    if (showCreateTabDialog) {
+        CreateTabDialog(
+            onDismiss = { showCreateTabDialog = false },
+            onCreate = { name ->
+                viewModel.createTab(name) {
+                    Toast.makeText(context, "Created tab \"$name\"", Toast.LENGTH_SHORT).show()
+                }
+                showCreateTabDialog = false
+            }
+        )
+    }
+
+    tabToRename?.let { tab ->
+        RenameTabDialog(
+            currentName = tab.name,
+            onDismiss = { tabToRename = null },
+            onRename = { newName ->
+                viewModel.renameTab(tab.id, newName)
+                Toast.makeText(context, "Renamed tab to \"$newName\"", Toast.LENGTH_SHORT).show()
+                tabToRename = null
+            }
+        )
+    }
+
+    tabToDelete?.let { tab ->
+        DeleteTabDialog(
+            tabName = tab.name,
+            onDismiss = { tabToDelete = null },
+            onConfirm = {
+                viewModel.deleteTab(tab.id)
+                Toast.makeText(context, "Deleted tab \"${tab.name}\"", Toast.LENGTH_SHORT).show()
+                tabToDelete = null
+            }
+        )
+    }
+
+    tabForOptionsMenu?.let { tab ->
+        TabOptionsMenuSheet(
+            tab = tab,
+            onDismiss = { tabForOptionsMenu = null },
+            onManageSenders = {
+                tabToManageSenders = tab
+                tabForOptionsMenu = null
+            },
+            onRename = {
+                tabToRename = tab
+                tabForOptionsMenu = null
+            },
+            onDelete = {
+                tabToDelete = tab
+                tabForOptionsMenu = null
+            }
+        )
+    }
+
+    tabToManageSenders?.let { tab ->
+        ManageTabSendersDialog(
+            tab = tab,
+            allThreads = state.threads,
+            onDismiss = { tabToManageSenders = null },
+            onSave = { addresses ->
+                viewModel.setTabSenders(tab.id, addresses)
+                Toast.makeText(
+                    context,
+                    "Updated senders in \"${tab.name}\"",
+                    Toast.LENGTH_SHORT
+                ).show()
+                tabToManageSenders = null
+            }
+        )
+    }
+
+    if (showAddToTabDialog) {
+        AddToTabDialog(
+            selectedCount = selectedThreadIds.size,
+            tabs = state.tabs,
+            onDismiss = { showAddToTabDialog = false },
+            onAssignToTabs = { tabIds ->
+                viewModel.addSelectedToTabs(tabIds) { count ->
+                    Toast.makeText(
+                        context,
+                        "Added $count conversation${if (count > 1) "s" else ""} to tab",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                showAddToTabDialog = false
+            },
+            onCreateNewTab = {
+                showAddToTabDialog = false
+                showCreateTabDialog = true
+            }
+        )
+    }
+
+    activeProfileDialogInfo?.let { profile ->
+        ContactProfileDialog(
+            address = profile.address,
+            contactName = profile.contactName,
+            photoUri = profile.photoUri,
+            contactLookupUri = profile.contactLookupUri,
+            isContact = profile.isContact,
+            onDismiss = { activeProfileDialogInfo = null },
+            onOpenInfo = {
+                activeProfileDialogInfo = null
+                openChat(
+                    ChatNav(
+                        threadId = profile.threadId,
+                        address = profile.address,
+                        contactName = profile.contactName
+                    )
+                )
+            }
+        )
+    }
+
+    if (showCustomizationSheet) {
+        CustomizationSheet(
+            showTabs = state.showTabs,
+            onToggleShowTabs = { enabled ->
+                viewModel.setShowTabsEnabled(enabled)
+            },
+            showSimFilter = state.showSimFilter,
+            onToggleShowSimFilter = { enabled ->
+                viewModel.setShowSimFilterEnabled(enabled)
+            },
+            noSpamForContacts = state.noSpamForContacts,
+            onToggleNoSpamForContacts = { enabled ->
+                viewModel.setNoSpamForContactsEnabled(enabled)
+            },
+            enableDateTapShamsiToggle = state.enableDateTapShamsiToggle,
+            onToggleDateTapShamsi = { enabled ->
+                viewModel.setDateTapShamsiEnabled(enabled)
+            },
+            showNotificationDeleteAction = state.showNotificationDeleteAction,
+            onToggleNotificationDeleteAction = { enabled ->
+                viewModel.setNotificationDeleteActionEnabled(enabled)
+            },
+            onOpenSettings = {
+                showCustomizationSheet = false
+                onNavigateToSettings()
+            },
+            onDismiss = { showCustomizationSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConversationsTopBar(
+    isSelectionMode: Boolean,
+    selectedThreadIds: Set<Long>,
+    visibleThreads: List<ConversationThread>,
+    showContactsOnly: Boolean,
+    threads: List<ConversationThread>,
+    isDebuggable: Boolean,
+    onClearSelection: () -> Unit,
+    onSelectAll: () -> Unit,
+    onMarkSelectedRead: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    showTabs: Boolean = true,
+    onAddToTab: () -> Unit = {},
+    onToggleContactsOnly: () -> Unit,
+    onMarkAllRead: () -> Unit,
+    onNavigateToTestLab: () -> Unit,
+    onNavigateToFilterStudio: () -> Unit,
+    onOpenCustomization: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
+    if (isSelectionMode) {
+        val selectedCount = selectedThreadIds.size
+        val allFilteredSelected = visibleThreads.isNotEmpty() &&
+                selectedThreadIds.containsAll(visibleThreads.map { it.threadId })
+        TopAppBar(
+            title = {
+                Text(
+                    text = "$selectedCount selected",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            },
+            navigationIcon = {
+                IconButton(onClick = onClearSelection) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel selection",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = onSelectAll) {
+                    Icon(
+                        imageVector = if (allFilteredSelected) Icons.Default.Deselect else Icons.Default.SelectAll,
+                        contentDescription = if (allFilteredSelected) "Deselect all" else "Select all",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                if (showTabs) {
+                    IconButton(onClick = onAddToTab) {
+                        Icon(
+                            imageVector = Icons.Default.DriveFileMove,
+                            contentDescription = "Add to Tab",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                IconButton(onClick = onMarkSelectedRead) {
+                    Icon(
+                        imageVector = Icons.Default.MarkChatRead,
+                        contentDescription = "Mark as read",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                IconButton(onClick = onDeleteSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete selected",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            windowInsets = TopAppBarDefaults.windowInsets,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+            )
+        )
+    } else {
+        TopAppBar(
+            title = {
+                Column {
+                    Text(
+                        text = "رامش",
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Vazirmatn),
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = stringResource(R.string.sms_inbox),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            },
+            actions = {
+                val contactsButtonBg by animateColorAsState(
+                    targetValue = if (showContactsOnly) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    animationSpec = spring(),
+                    label = "contactsToggleBg"
+                )
+                val contactsIconTint by animateColorAsState(
+                    targetValue = if (showContactsOnly) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary,
+                    animationSpec = spring(),
+                    label = "contactsToggleTint"
+                )
+
+                Surface(
+                    shape = CircleShape,
+                    color = contactsButtonBg,
+                    modifier = Modifier.padding(end = 6.dp)
+                ) {
+                    IconButton(onClick = onToggleContactsOnly) {
+                        Icon(
+                            imageVector = Icons.Default.Contacts,
+                            contentDescription = if (showContactsOnly) "Showing contacts only (Tap to show all)" else "Filter by contacts only",
+                            tint = contactsIconTint
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                ) {
+                    IconButton(onClick = onNavigateToFilterStudio) {
+                        Icon(
+                            imageVector = Icons.Default.FilterAlt,
+                            contentDescription = "Filter Studio",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                // Textra keeps its top bar tidy: everything else lives in an overflow menu.
+                var showOverflowMenu by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.padding(start = 2.dp, end = 4.dp)) {
+                    IconButton(onClick = { showOverflowMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "More options",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showOverflowMenu,
+                        onDismissRequest = { showOverflowMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Customize inbox") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Tune, contentDescription = null)
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                onOpenCustomization()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Settings") },
+                            leadingIcon = {
+                                Icon(Icons.Default.Settings, contentDescription = null)
+                            },
+                            onClick = {
+                                showOverflowMenu = false
+                                onOpenSettings()
+                            }
+                        )
+                        if (threads.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Mark all as read") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.MarkChatRead, contentDescription = null)
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onMarkAllRead()
+                                }
+                            )
+                        }
+                        if (isDebuggable) {
+                            DropdownMenuItem(
+                                text = { Text("Test Lab") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.BugReport, contentDescription = null)
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onNavigateToTestLab()
+                                }
+                            )
+                        }
+                    }
+                }
+            },
+            windowInsets = TopAppBarDefaults.windowInsets,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        )
+    }
+}
+
+@Composable
+private fun ConversationsInboxList(
+    threads: List<ConversationThread>,
+    selectedIds: Set<Long>,
+    isSelectionMode: Boolean,
+    simSlotMap: Map<Int, Int> = emptyMap(),
+    hasMultipleSims: Boolean = false,
+    onOpenChat: (ChatNav) -> Unit,
+    onToggleSelect: (Long) -> Unit,
+    onEnterSelection: (Long) -> Unit,
+    onAvatarClick: (ConversationThread) -> Unit
+) {
+    val showAvatars = AppearanceStore.current.showInboxAvatars
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = ListBottomFabPadding)
+    ) {
+        items(
+            items = threads,
+            key = { it.threadId },
+            contentType = { "thread" }
+        ) { thread ->
+            ConversationItem(
+                thread = thread,
+                selectedIds = selectedIds,
+                isSelectionMode = isSelectionMode,
+                showAvatar = showAvatars,
+                simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                onClick = {
+                    if (isSelectionMode) {
+                        onToggleSelect(thread.threadId)
+                    } else {
+                        onOpenChat(
+                            ChatNav(
+                                threadId = thread.threadId,
+                                address = thread.address,
+                                contactName = thread.contactName
+                            )
+                        )
+                    }
+                },
+                onLongClick = {
+                    if (isSelectionMode) {
+                        onToggleSelect(thread.threadId)
+                    } else {
+                        onEnterSelection(thread.threadId)
+                    }
+                },
+                onAvatarClick = {
+                    onAvatarClick(thread)
+                }
+            )
+            HorizontalDivider(
+                modifier = Modifier.padding(
+                    start = if (showAvatars) AvatarDividerInset else 16.dp,
+                    end = 16.dp
+                ),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatchDeleteConversationsDialog(
+    selectedThreadIds: Set<Long>,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit,
+    onDelete: ((Int) -> Unit) -> Unit
+) {
+    val count = selectedThreadIds.size
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Delete $count conversation${if (count > 1) "s" else ""}?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                text = "Are you sure you want to delete $count selected conversation${if (count > 1) "s" else ""} and all associated messages? This action cannot be undone.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onDismiss()
+                    onDelete { deletedCount -> onConfirm(deletedCount) }
+                }
+            ) {
+                Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ConversationItem(
+    thread: ConversationThread,
+    selectedIds: Set<Long>,
+    isSelectionMode: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    showAvatar: Boolean = true,
+    simSlotNumber: Int? = null,
+    onAvatarClick: (() -> Unit)? = null
+) {
+    val isSelected by remember(thread.threadId) {
+        derivedStateOf { thread.threadId in selectedIds }
+    }
+    val displayName = senderDisplayName(thread.contactName, thread.address)
+
+    val itemBgColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.38f)
+    } else {
+        Color.Transparent
+    }
+    val dateText = remember(thread.date) { SmsDateFormats.conversationList(thread.date) }
+    val isLastReceivedSpam = thread.isLastReceivedSpam
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (isLastReceivedSpam) 0.46f else 1f)
+            .background(itemBgColor)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
+            .padding(horizontal = 16.dp, vertical = 13.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (showAvatar || isSelectionMode) {
+        Box(
+            modifier = Modifier.size(50.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelectionMode && isSelected) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            } else if (isSelectionMode) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = CircleShape
+                        )
+                ) {
+                    ConversationAvatar(
+                        address = thread.address,
+                        contactName = thread.contactName,
+                        photoUri = thread.photoUri,
+                        size = 48.dp
+                    )
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (onAvatarClick != null) {
+                                Modifier.clickable(
+                                    role = Role.Button,
+                                    onClick = onAvatarClick
+                                )
+                            } else Modifier
+                        )
+                ) {
+                    ConversationAvatar(
+                        address = thread.address,
+                        contactName = thread.contactName,
+                        photoUri = thread.photoUri,
+                        size = 48.dp
+                    )
+                }
+            }
+        }
+        }
+
+        if (showAvatar || isSelectionMode) {
+            Spacer(modifier = Modifier.width(14.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium.contentAware(),
+                    fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (simSlotNumber != null) {
+                        SimBadge(slotNumber = simSlotNumber)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.Bold else FontWeight.Normal,
+                        color = if (thread.unreadCount > 0 && !thread.isUnreadSpam) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = thread.snippet,
+                    style = MaterialTheme.typography.bodyMedium.contentAware(),
+                    color = if (thread.unreadCount > 0 && !thread.isUnreadSpam) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (thread.unreadCount > 0 && !isSelectionMode) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    if (thread.isUnreadSpam) {
+                        Surface(
+                            shape = PillShape,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                        ) {
+                            Text(
+                                text = "Spam",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontSize = 10.sp
+                            )
+                        }
+                    } else {
+                        Badge(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ) {
+                            Text(
+                                text = thread.unreadCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                modifier = Modifier.padding(horizontal = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchSectionHeader(
+    title: String,
+    count: Int
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 0.5.sp,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Surface(
+            shape = PillShape,
+            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+        ) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchMessageResultItem(
+    item: SearchMessageResult,
+    searchQuery: String,
+    onClick: () -> Unit,
+    simSlotNumber: Int? = null,
+    onAvatarClick: (() -> Unit)? = null
+) {
+    val displayName = senderDisplayName(item.contactName, item.address)
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val annotatedSnippet = remember(item.body, searchQuery, primaryColor, textColor) {
+        buildAnnotatedSearchSnippet(item.body, searchQuery, primaryColor, textColor)
+    }
+    val dateText = remember(item.date) { SmsDateFormats.conversationList(item.date) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .then(
+                    if (onAvatarClick != null) {
+                        Modifier.clickable(role = Role.Button, onClick = onAvatarClick)
+                    } else Modifier
+                )
+        ) {
+            ConversationAvatar(
+                address = item.address,
+                contactName = item.contactName,
+                photoUri = item.photoUri,
+                size = 48.dp
+            )
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = displayName,
+                    style = MaterialTheme.typography.titleMedium.contentAware(),
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (simSlotNumber != null) {
+                        SimBadge(slotNumber = simSlotNumber)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = dateText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = annotatedSnippet,
+                    style = MaterialTheme.typography.bodyMedium.contentAware(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (item.isSpam) {
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = PillShape,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    ) {
+                        Text(
+                            text = "Spam",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildAnnotatedSearchSnippet(
+    body: String,
+    query: String,
+    primaryColor: Color,
+    textColor: Color
+): AnnotatedString {
+    if (query.isBlank()) return AnnotatedString(body)
+
+    val builder = AnnotatedString.Builder()
+    val lowerBody = body.lowercase(Locale.getDefault())
+    val lowerQuery = query.trim().lowercase(Locale.getDefault())
+
+    var currentIndex = 0
+    var matchIndex = lowerBody.indexOf(lowerQuery, currentIndex)
+
+    while (matchIndex != -1) {
+        if (matchIndex > currentIndex) {
+            builder.append(body.substring(currentIndex, matchIndex))
+        }
+        val endIndex = matchIndex + lowerQuery.length
+        builder.pushStyle(
+            SpanStyle(
+                color = primaryColor,
+                fontWeight = FontWeight.ExtraBold,
+                background = primaryColor.copy(alpha = 0.15f)
+            )
+        )
+        builder.append(body.substring(matchIndex, endIndex))
+        builder.pop()
+        currentIndex = endIndex
+        matchIndex = lowerBody.indexOf(lowerQuery, currentIndex)
+    }
+
+    if (currentIndex < body.length) {
+        builder.append(body.substring(currentIndex))
+    }
+
+    return builder.toAnnotatedString()
+}
+
+private data class ProfileDialogData(
+    val threadId: Long,
+    val address: String,
+    val contactName: String?,
+    val photoUri: String? = null,
+    val contactLookupUri: String? = null,
+    val isContact: Boolean = !contactName.isNullOrBlank()
+)

@@ -29,4 +29,28 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: |
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log
+          ./gradlew testDebugUnitTest 2>&1 | tee -a build.log
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ramesh-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      # CI logs are not always reachable from automation, so surface the
+      # interesting parts of the Gradle output as check annotations.
+      - name: Report build failure
+        if: failure()
+        run: |
+          if [ -f build.log ]; then
+            tr -d '\r' < build.log > build-clean.log
+            grep -E '^e: |^FAILURE: |What went wrong|Execution failed for task|Could not (resolve|find|open)|Unresolved reference' build-clean.log \
+              | head -n 50 \
+              | sed 's/%/%25/g' \
+              | awk '{ printf "::error::%s\n", $0 }'
+          fi

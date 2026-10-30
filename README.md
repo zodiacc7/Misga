@@ -1,95 +1,164 @@
-# Misga
+# رامش (Ramesh)
 
-**[English](#english)** | **[فارسی](#farsi)**
+**SMS without the spam — and a look you actually like.**
+
+[English](#english) · [فارسی](#farsi)
+
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Android 8.0+](https://img.shields.io/badge/Android-8.0%2B-3ddc84.svg)](https://developer.android.com/about/versions/oreo)
 
 ---
 
 <a id="english"></a>
 
-# Misga - Make Iran's SMS Great Again
+## English
 
-An Android SMS application made for Iran's SMS situation.
+Ramesh is a full-featured Android SMS app built for Iran's messaging reality, with a
+Textra-style look you can customise down to the last detail.
 
-Iran's SMS has turned into a pile of spam messages and advertisements. Almost every notification is just another spam sound that no one cares about.
+Iranian SMS is mostly noise: ads, promotions and scams, mixed with the occasional
+verification code you cannot afford to miss. Ramesh ships with ready-made regex filters
+that silence the noise, while an allowlist makes sure OTPs and banking messages always
+get through.
 
-Misga is built to fix this. By default it ships with predefined regex filters that silence those messages and mark them as spam.
+> Ramesh is a fork of [Misga](https://github.com/mirarr-app/Misga) (GPL-3.0), published as its own
+> app under the `com.ramesh.sms` package id. It installs next to Misga as a separate application
+> with its own messages, filters and settings.
 
-<p float="left"> <img width="45%" alt="screenshot-2026-07-09_16-38-14" src="https://github.com/user-attachments/assets/70c8d05b-a744-4bfd-925d-70e45562cd45" /> 
-<img width="45%" alt="screenshot-2026-07-09_16-36-25" src="https://github.com/user-attachments/assets/6a55f74f-1ed2-4bb4-9f46-48e67ee25283" /> </p>
-<p float="left"> <img width="45%" alt="screenshot-2026-07-09_16-36-14" src="https://github.com/user-attachments/assets/a1687a5f-4f0e-4b13-8e30-a98bf1988d46" />
-<img width="45%" alt="screenshot-2026-07-09_16-35-35" src="https://github.com/user-attachments/assets/6076411c-bcb4-4714-973f-44a7fdba4ae8" /></p>
+### Highlights
 
+- **Allowlist-first filtering.** Allowlist rules run before the blocklist, so a promotional
+  message that also carries a real login code still reaches you.
+- **Built-in Iranian presets.** Spam, ads, phishing and scam patterns are included; keep them,
+  disable them, edit them, or delete everything and start from your own list.
+- **Filter Studio.** Add regex or plain-text rules, test a pattern against sample text, and
+  export/import the whole rule set as JSON.
+- **Textra-style appearance.** Auto/Light/Dark/AMOLED-Black themes, accent colors, bubble
+  styles with a tail, separate sent/received bubble colors, message fonts and sizes, chat
+  wallpapers and contact photos.
+- **Dual SIM done properly.** Pick the SIM per message, see which SIM received a message, and
+  filter the inbox by SIM.
+- **Peaceful notifications.** Filtered messages arrive silently, spam produces no notification
+  at all, and notifications support inline reply, mark-as-read, optional delete and a one-tap
+  **Copy code** button for verification SMS.
+- **No network permission.** Ramesh has no `INTERNET` permission: filtering, contacts and
+  media decoding all happen on-device.
+- **RTL-aware.** Persian and Arabic message bodies render with the correct direction and
+  punctuation even in the English UI, and dates can be shown in the Shamsi calendar.
 
+### Appearance & settings
 
-## Features
+Open the **⋮** menu in the inbox and choose **Settings** — or use the quick **Customize
+inbox** sheet. Everything applies live.
 
-- **Regex filters with allowlist priority.** Allowlist rules are evaluated first, so you will never miss an important OTP code or an important message.
-- **A builtin filter list, fully yours.** The app already includes presets for Iranian spam, ads, and scams. You can keep them, disable them, or delete everything and build your own list from scratch.
-- **Add any filter you want.** Open Filter Studio and add a regex (or plain-text) rule. If you are not comfortable writing regex, ask your AI agent to create a pattern that blocks a specific kind of spam, then paste it into the app.
-- **Material 3 Expressive.** The UI follows Google's latest Material Design 3 patterns.
-- **Textra-style look & feel.** Theme modes (auto/light/dark/AMOLED black), nine accent colors, Textra bubbles with a tail, separate sent/received bubble colors, message font and size, a flat or photo chat background, contact photos and Today/Yesterday dividers.
+| Section | What you can change |
+| --- | --- |
+| **Theme** | Auto, Light, Dark, or Black (true black for AMOLED). Accent follows the system wallpaper color on Android 12+, or pick one of nine hand-tuned accents. |
+| **Bubbles** | Textra, Rounded, Pill or Compact shape; bubble tail on/off; independent colors for sent and received bubbles; four text sizes; Vazirmatn, Plus Jakarta or the system font. |
+| **Chat background** | Six flat tones, or any photo from your gallery (downsampled and scrimmed so bubbles stay readable). |
+| **Conversation** | Contact photos next to received messages, Today/Yesterday dividers, Enter-to-send, SMS character counter, tap a timestamp to switch Gregorian/Shamsi. |
+| **Inbox** | Conversation tabs, SIM filter, contact photos, contacts-only mode. |
+| **Notifications** | Delete action, and the copy-code button for one-time codes. |
+| **Filtering** | “No spam for contacts”, plus a shortcut to Filter Studio. |
+| **Reset** | Restore the default look without touching messages or filters. |
 
-## Appearance & settings
-
-Open the ⋮ menu in the inbox and choose **Settings** (or tap the banner at the top of *Customize inbox*). Everything updates live:
-
-- **Theme** — Auto, Light, Dark or Black (true black for AMOLED), plus System dynamic color or nine hand-tuned accents.
-- **Bubbles** — Textra, Rounded, Pill or Compact shapes; bubble tail on/off; independent colors for sent and received bubbles; four message text sizes; Vazirmatn, Plus Jakarta or the system font.
-- **Chat background** — six flat tones or any photo from your gallery (decoded and downsampled so large images stay memory-safe).
-- **Conversation** — contact photos next to received messages, Today/Yesterday date dividers, Enter-to-send, SMS character counter and the tap-to-switch Shamsi date option.
-- **Inbox** — conversation tabs, SIM filter, contact photos and contacts-only mode.
-- **Notifications** — delete action, and a one-tap **Copy code** button when an incoming SMS contains a login/verification code.
-- **Filtering** — no-spam-for-contacts plus a shortcut to Filter Studio.
-- **Reset** — restore the default look without touching your messages or filters.
-
-## How filtering works
+### How filtering works
 
 Every incoming message is checked in this order:
 
-1. **Allowlist** — always delivered with a normal notification. Built-in presets cover login codes, banking OTPs (رمز پویا / رمز دوم), and other verification messages.
-2. **Blocklist** — matching messages are marked as spam: no sound, no badge, collapsed in the conversation.
-3. **Sender settings** — you can also mute or block a specific sender from the chat.
+1. **Allowlist** — always delivered with a normal notification. Built-in presets cover login
+   codes, banking OTPs (`رمز پویا` / `رمز دوم`) and other verification messages.
+2. **Blocklist** — matching messages are marked as spam: no sound, no badge, and collapsed
+   into a slim pill inside the conversation (tap to reveal, or mark “not spam”).
+3. **Sender settings** — inside a chat you can mute or block one specific sender, choose its
+   default action and preferred SIM, and even give that sender its own rules.
 
-Because allowlist wins, a promotional message that also contains a real verification code still gets through.
+Because the allowlist wins, filtering never swallows an OTP.
 
-Set Misga as your **default SMS app** so it can intercept messages in real time. Android only delivers incoming SMS to the default messaging app.
+Ramesh must be your **default SMS app** to receive messages in real time — Android only
+delivers incoming SMS to the default messaging app.
 
-## Install
+### Custom filters
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.miss.ga/)
+Filter Studio is where rules live:
 
-Android 8.0 (API 26) or newer is required.
+- add allowlist or blocklist rules (regex or substring)
+- enable, disable, edit or delete any rule, including built-ins
+- test a pattern against sample text before saving
+- export and import the full list as JSON
 
-Alternatively, you can download the signed `misga-*-universal.apk` from the [GitHub Releases](https://github.com/mirarr-app/Misga/releases) page.
+A prompt that works well with an AI agent:
 
-Install the APK, open Misga, grant SMS permissions, and set it as the default SMS app when prompted.
-
-## Custom filters
-
-Filter Studio is where rules live. You can:
-
-- Add allowlist or blocklist rules (regex or substring)
-- Enable, disable, edit, or delete any rule, including the builtins
-- Test a pattern against sample text before saving
-- Export and import the rule list as JSON
-
-A typical prompt for an AI agent:
-
-> Write a Java regex for Misga that matches Iranian SMS of this kind: \[paste an example\]. It should not match OTP or bank verification messages.
+> Write a Java regex for Ramesh that matches Iranian SMS of this kind: `[paste an example]`.
+> It must not match OTPs or bank verification messages.
 
 Then add the pattern in Filter Studio as a blocklist rule.
 
-## Build from source
+### Install
 
-JDK 17 and the Android SDK are required.
+1. Download the signed `ramesh-<version>-universal.apk` from
+   [GitHub Releases](https://github.com/zodiacc7/ramesh/releases).
+2. Install it and open Ramesh.
+3. Grant SMS, contacts and notification permissions.
+4. Accept the prompt to become the default SMS app.
+
+Android 8.0 (API 26) or newer is required. MMS is not supported. Installation is side-by-side:
+Ramesh does not replace or upgrade an existing Misga install.
+
+> Ramesh is distributed through GitHub Releases; there is no F-Droid listing for
+> `com.ramesh.sms` yet. The upstream Misga listing (`com.miss.ga`) is a different app.
+
+### Build from source
+
+Requirements: **JDK 21** and the **Android SDK (API 36)**.
 
 ```bash
-./gradlew assembleDebug
+./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
+./gradlew test               # unit tests (filter engine, OTP detector, dates, prefs)
+./gradlew assembleRelease    # needs the signing environment variables below
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/`.
+Release signing is read from the environment:
+`SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
+
+### Project structure
+
+```
+app/src/main/java/com/ramesh/sms/
+├── data/        SQLite rules DB, SMS repository, SIM telephony, preferences
+├── engine/      filter engine, incoming-SMS policy, OTP detector, notifications
+├── receiver/    SMS/MMS receivers, notification actions, sent/delivery reports
+├── theme/       Material 3 theme, appearance model + store, bubble shapes
+└── ui/          inbox, chat, compose, Filter Studio, settings, components
+```
+
+### Package and stored data
+
+Ramesh owns its identifiers end to end: package `com.ramesh.sms`, preferences
+`ramesh_preferences` / `ramesh_appearance` / `ramesh_test_lab`, the rules database
+`ramesh_filters.db`, and notification channels `ramesh_sms_alert_channel` /
+`ramesh_sms_silent_channel`.
+
+Because the package id is new, Ramesh does **not** read Misga's data: it installs as a separate
+app, starts with a fresh rule set, and both apps can coexist during the switch-over. Uninstalling
+Misga is safe once you have exported your filters from Filter Studio.
+
+### Privacy
+
+- No internet permission, no analytics, no ads, no third-party SDKs.
+- Messages and rules stay on the device.
+- Contact photos and wallpapers are read only when you pick them, through the system picker.
+
+### Contributing
+
+Issues and pull requests: <https://github.com/zodiacc7/ramesh>.
+
+### Credits & license
+
+Ramesh is based on [Misga](https://github.com/mirarr-app/Misga) by Mirarr and is inspired by
+[Textra SMS](https://textra.app). Fonts: [Vazirmatn](https://github.com/rastikerdar/vazirmatn)
+and [Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) (both SIL OFL).
+Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 
 ---
 
@@ -97,82 +166,150 @@ The debug APK is written to `app/build/outputs/apk/debug/`.
 
 <div dir="rtl" lang="fa">
 
-# میسگا - Make Iran's SMS Great Again
+## فارسی
 
-یک برنامهٔ پیامک اندروید که برای وضعیت پیامک در ایران ساخته شده است.
+**رامش** یک برنامهٔ کامل پیامک برای اندروید است که برای واقعیت پیامک در ایران ساخته شده و
+ظاهری به سبک Textra دارد که تا آخرین جزئیات قابل شخصی‌سازی است.
 
-پیامک در ایران به انبوهی از اسپم و تبلیغات تبدیل شده است. تقریباً هر اعلان فقط یک صدای اسپم دیگر است که کسی به آن توجه نمی‌کند.
+پیامک در ایران بیشتر سر و صداست: تبلیغ، تخفیف و کلاهبرداری، لابه‌لای چند کد تأیید که نباید
+از دست بروند. رامش از ابتدا فیلترهای آمادهٔ regex دارد تا این سر و صدا را خفه کند، و یک
+لیست سفید تضمین می‌کند کدهای تأیید و پیام‌های بانکی همیشه برسند.
 
-میسگا برای حل همین مشکل ساخته شده است. برنامه از ابتدا با فیلترهای ازپیش‌تعریف‌شدهٔ regex می‌آید تا این پیام‌ها را بی‌صدا کند و به‌عنوان اسپم علامت بزند.
+> رامش ادامهٔ پروژهٔ [میسگا](https://github.com/mirarr-app/Misga) با پروانهٔ GPL-3.0 است و با
+> شناسهٔ بستهٔ مستقل `com.ramesh.sms` منتشر می‌شود؛ کنار میسگا نصب می‌شود و پیام‌ها، فیلترها و
+> تنظیمات جداگانهٔ خودش را دارد.
 
-## ویژگی‌ها
+### ویژگی‌ها
 
-- **فیلتر regex با اولویت لیست سفید.** قوانین لیست سفید اول بررسی می‌شوند؛ بنابراین کد تأیید مهم یا پیام مهم را از دست نمی‌دهید.
-- **لیست فیلتر داخلی که مال خودتان است.** برنامه از قبل پیش‌فرض‌هایی برای اسپم، تبلیغات و کلاهبرداری‌های رایج ایران دارد. می‌توانید آن‌ها را نگه دارید، خاموش کنید، یا همه را پاک کنید و لیست خودتان را از صفر بسازید.
-- **هر فیلتری که بخواهید اضافه کنید.** Filter Studio را باز کنید و یک قانون regex (یا متن ساده) بسازید. اگر نوشتن regex برایتان راحت نیست، از ایجنت هوش مصنوعی بخواهید الگویی برای مسدود کردن نوع خاصی از اسپم بسازد و آن را در برنامه اضافه کنید.
-- **Material 3 Expressive.** رابط کاربری از آخرین الگوهای طراحی Material Design 3 گوگل پیروی می‌کند.
-- **ظاهر و تنظیمات شبیه Textra.** حالت‌های تم (خودکار/روشن/تیره/مشکی AMOLED)، نُه رنگ تأکیدی، حباب‌های Textra با دنباله، رنگ جداگانه برای حباب ارسالی و دریافتی، فونت و اندازهٔ متن، پس‌زمینهٔ ساده یا عکس، عکس مخاطب و جداکنندهٔ امروز/دیروز.
+- **فیلتر با اولویت لیست سفید.** قوانین لیست سفید پیش از لیست سیاه بررسی می‌شوند؛ پس پیام
+  تبلیغاتی‌ای که یک کد ورود واقعی هم دارد، از دست نمی‌رود.
+- **پیش‌فرض‌های آمادهٔ ایرانی.** الگوهای اسپم، تبلیغات، فیشینگ و کلاهبرداری از قبل هست؛
+  می‌توانید نگه دارید، خاموش کنید، ویرایش کنید یا همه را پاک کنید و از صفر بسازید.
+- **Filter Studio.** افزودن قانون regex یا متن ساده، آزمایش الگو روی متن نمونه، و
+  خروجی/ورودی گرفتن کل قوانین با JSON.
+- **ظاهر به سبک Textra.** تم خودکار/روشن/تیره/مشکی AMOLED، رنگ تأکیدی، شکل حباب با دنباله،
+  رنگ جداگانه برای حباب ارسالی و دریافتی، فونت و اندازهٔ متن، پس‌زمینهٔ گفتگو و عکس مخاطب.
+- **دو سیم‌کارت، درست و کامل.** انتخاب سیم‌کارت برای هر پیام، نمایش سیم‌کارت دریافت‌کننده و
+  فیلتر کردن صندوق بر اساس سیم‌کارت.
+- **اعلان‌های آرام.** پیام‌های فیلترشده بی‌صدا می‌رسند، اسپم‌ها هیچ اعلانی نمی‌سازند و اعلان‌ها
+  پاسخ سریع، خوانده‌شدن، حذف اختیاری و دکمهٔ **کپی کد** برای پیامک‌های تأیید دارند.
+- **بدون دسترسی اینترنت.** رامش اجازهٔ `INTERNET` ندارد؛ فیلتر، مخاطبین و پردازش تصویر
+  کاملاً روی گوشی انجام می‌شود.
+- **پشتیبانی از راست‌به‌چپ.** متن فارسی و عربی با جهت و نشانه‌گذاری درست نمایش داده می‌شود و
+  تاریخ‌ها را می‌توان شمسی دید.
 
-## ظاهر و تنظیمات
+### ظاهر و تنظیمات
 
-از منوی ⋮ در صندوق ورودی گزینهٔ **Settings** را بزنید (یا از بالای پنجرهٔ *Customize inbox*). همهٔ تغییرها همان لحظه اعمال می‌شوند:
+از منوی **⋮** در صندوق ورودی گزینهٔ **Settings** را بزنید، یا از پنجرهٔ سریع **Customize inbox**
+استفاده کنید. همهٔ تغییرها همان لحظه اعمال می‌شوند.
 
-- **تم** — خودکار، روشن، تیره یا مشکی (مشکی واقعی برای AMOLED)، به‌همراه رنگ سیستم یا نُه رنگ دست‌چین‌شده.
-- **حباب‌ها** — شکل Textra، گرد، قرصی یا جمع‌وجور؛ دنبالهٔ حباب روشن/خاموش؛ رنگ مستقل برای حباب ارسالی و دریافتی؛ چهار اندازهٔ متن؛ فونت Vazirmatn، Plus Jakarta یا فونت سیستم.
-- **پس‌زمینهٔ گفتگو** — شش رنگ ساده یا هر عکسی از گالری (با کاهش اندازه تا حافظه پر نشود).
-- **گفتگو** — عکس مخاطب کنار پیام‌های دریافتی، جداکنندهٔ امروز/دیروز، ارسال با کلید Enter، شمارندهٔ کاراکتر پیامک و گزینهٔ لمس تاریخ برای تقویم شمسی.
-- **صندوق ورودی** — تب‌های گفتگو، فیلتر سیم‌کارت، عکس مخاطب و حالت «فقط مخاطبین».
-- **اعلان‌ها** — دکمهٔ حذف، و دکمهٔ **کپی کد** وقتی پیامک ورودی شامل کد ورود/تأیید است.
-- **فیلتر** — «بدون اسپم برای مخاطبین» و میان‌بر Filter Studio.
-- **بازنشانی** — برگشت به ظاهر پیش‌فرض بدون دست‌زدن به پیام‌ها و فیلترها.
+| بخش | چه چیزی قابل تغییر است |
+| --- | --- |
+| **تم** | خودکار، روشن، تیره یا مشکی واقعی (AMOLED). رنگ تأکیدی از رنگ سیستم اندروید ۱۲ به بالا، یا یکی از نُه رنگ دست‌چین‌شده. |
+| **حباب‌ها** | شکل Textra، گرد، قرصی یا جمع‌وجور؛ دنبالهٔ حباب روشن/خاموش؛ رنگ مستقل حباب ارسالی و دریافتی؛ چهار اندازهٔ متن؛ فونت Vazirmatn، Plus Jakarta یا فونت سیستم. |
+| **پس‌زمینهٔ گفتگو** | شش رنگ ساده یا هر عکسی از گالری (با کاهش اندازه و لایهٔ محو برای خوانایی حباب‌ها). |
+| **گفتگو** | عکس مخاطب کنار پیام‌های دریافتی، جداکنندهٔ امروز/دیروز، ارسال با Enter، شمارندهٔ کاراکتر و لمس تاریخ برای تغییر تقویم شمسی/میلادی. |
+| **صندوق ورودی** | تب‌های گفتگو، فیلتر سیم‌کارت، عکس مخاطب و حالت «فقط مخاطبین». |
+| **اعلان‌ها** | دکمهٔ حذف و دکمهٔ کپی کد برای کدهای یک‌بارمصرف. |
+| **فیلتر** | «بدون اسپم برای مخاطبین» و میان‌بر Filter Studio. |
+| **بازنشانی** | برگشت به ظاهر پیش‌فرض، بدون دست‌زدن به پیام‌ها و فیلترها. |
 
-## فیلتر چطور کار می‌کند
+### فیلتر چطور کار می‌کند
 
 هر پیام ورودی به این ترتیب بررسی می‌شود:
 
-1. **لیست سفید** — همیشه با اعلان عادی می‌رسد. پیش‌فرض‌های داخلی کد ورود، رمز پویا / رمز دوم بانکی، و دیگر پیام‌های تأیید را پوشش می‌دهند.
-2. **لیست سیاه** — پیام‌های منطبق اسپم می‌شوند: بدون صدا، بدون نشان اعلان، و جمع‌شده داخل گفتگو.
-3. **تنظیمات فرستنده** — از داخل گفتگو هم می‌توانید یک فرستنده را بی‌صدا یا مسدود کنید.
+1. **لیست سفید** — همیشه با اعلان عادی می‌رسد. پیش‌فرض‌ها کد ورود، رمز پویا/رمز دوم بانکی و
+   دیگر پیام‌های تأیید را پوشش می‌دهند.
+2. **لیست سیاه** — پیام‌های منطبق، اسپم می‌شوند: بدون صدا، بدون نشان اعلان و جمع‌شده در یک
+   نوار باریک داخل گفتگو (برای دیدن یا «اسپم نیست» لمس کنید).
+3. **تنظیمات فرستنده** — از داخل گفتگو می‌توانید یک فرستنده را بی‌صدا یا مسدود کنید، رفتار
+   پیش‌فرض و سیم‌کارت دلخواهش را تعیین کنید و حتی برایش قانون اختصاصی بسازید.
 
-چون لیست سفید اولویت دارد، حتی اگر پیام تبلیغاتی همزمان یک کد تأیید واقعی داشته باشد، آن پیام می‌رسد.
+چون لیست سفید اولویت دارد، هیچ کد تأییدی قربانی فیلتر نمی‌شود.
 
-میسگا را به‌عنوان **برنامهٔ پیامک پیش‌فرض** تنظیم کنید تا بتواند پیام‌ها را در لحظه رهگیری کند. اندروید پیامک ورودی را فقط به برنامهٔ پیام‌رسان پیش‌فرض می‌دهد.
+برای دریافت پیام‌ها در لحظه، رامش باید **برنامهٔ پیامک پیش‌فرض** باشد؛ اندروید پیامک ورودی را
+فقط به برنامهٔ پیش‌فرض می‌دهد.
 
-## نصب
+### فیلترهای سفارشی
 
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
-    alt="دریافت از F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.miss.ga/)
+قوانین در Filter Studio نگهداری می‌شوند:
 
-اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است.
+- افزودن قانون لیست سفید یا لیست سیاه (regex یا زیررشته)
+- روشن، خاموش، ویرایش یا حذف هر قانون، حتی پیش‌فرض‌ها
+- آزمایش الگو روی متن نمونه پیش از ذخیره
+- خروجی و ورودی گرفتن کل لیست به‌صورت JSON
 
-همچنین می‌توانید فایل `misga-*-universal.apk` امضاشده را از صفحهٔ [GitHub Releases](https://github.com/mirarr-app/Misga/releases) دانلود کنید.
+نمونهٔ درخواست از ایجنت هوش مصنوعی:
 
-APK را نصب کنید، میسگا را باز کنید، دسترسی پیامک را بدهید، و وقتی پرسیده شد آن را برنامهٔ پیامک پیش‌فرض کنید.
-
-## فیلترهای سفارشی
-
-قوانین در Filter Studio نگهداری می‌شوند. می‌توانید:
-
-- قانون لیست سفید یا لیست سیاه اضافه کنید (regex یا زیررشته)
-- هر قانونی را، از جمله پیش‌فرض‌ها، روشن، خاموش، ویرایش یا حذف کنید
-- قبل از ذخیره، الگو را روی یک متن نمونه آزمایش کنید
-- لیست قوانین را به‌صورت JSON خروجی بگیرید یا وارد کنید
-
-نمونهٔ درخواست برای ایجنت هوش مصنوعی:
-
-> یک regex جاوا برای میسگا بنویس که این نوع پیامک ایرانی را بگیرد: \[یک نمونه بچسبانید\]. نباید با OTP یا پیام تأیید بانکی منطبق شود.
+> یک regex جاوا برای رامش بنویس که این نوع پیامک ایرانی را بگیرد: `[یک نمونه بچسبانید]`.
+> نباید با کد تأیید یا پیام بانکی منطبق شود.
 
 بعد الگو را در Filter Studio به‌عنوان قانون لیست سیاه اضافه کنید.
 
-## ساخت از روی سورس
+### نصب
 
-JDK ۱۷ و Android SDK لازم است.
+۱. فایل امضاشدهٔ `ramesh-<version>-universal.apk` را از
+   [GitHub Releases](https://github.com/zodiacc7/ramesh/releases) دانلود کنید.
+۲. نصب کنید و رامش را باز کنید.
+۳. دسترسی پیامک، مخاطبین و اعلان را بدهید.
+۴. درخواست «برنامهٔ پیامک پیش‌فرض» را بپذیرید.
+
+اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند. نصب
+کنار میسگا انجام می‌شود و رامش جایگزین یا به‌روزرسانی نصب فعلی نیست.
+
+> رامش از طریق GitHub Releases منتشر می‌شود و هنوز صفحه‌ای در F-Droid برای بستهٔ
+> `com.ramesh.sms` وجود ندارد. صفحهٔ فعلی F-Droid مربوط به میسگا (`com.miss.ga`) برنامهٔ دیگری است.
+
+### ساخت از روی سورس
+
+نیازمندی‌ها: **JDK 21** و **Android SDK (API 36)**.
 
 ```bash
-./gradlew assembleDebug
+./gradlew assembleDebug      # app/build/outputs/apk/debug/app-debug.apk
+./gradlew test               # تست‌های واحد موتور فیلتر، تشخیص OTP، تاریخ و تنظیمات
+./gradlew assembleRelease    # نیازمند متغیرهای امضای زیر
 ```
 
-APK دیباگ در مسیر `app/build/outputs/apk/debug/` ساخته می‌شود.
+امضای نسخهٔ انتشار از محیط خوانده می‌شود:
+`SIGNING_STORE_FILE`، `SIGNING_STORE_PASSWORD`، `SIGNING_KEY_ALIAS`، `SIGNING_KEY_PASSWORD`.
+
+### ساختار پروژه
+
+```
+app/src/main/java/com/ramesh/sms/
+├── data/        پایگاه‌دادهٔ قوانین، مخزن پیام‌ها، سیم‌کارت، تنظیمات
+├── engine/      موتور فیلتر، سیاست پیام ورودی، تشخیص OTP، اعلان‌ها
+├── receiver/    گیرنده‌های پیامک/MMS، اکشن‌های اعلان، گزارش ارسال و تحویل
+├── theme/       تم Material 3، مدل و مخزن ظاهر، شکل حباب‌ها
+└── ui/          صندوق ورودی، گفتگو، نوشتن پیام، Filter Studio، تنظیمات، کامپوننت‌ها
+```
+
+### بسته و داده‌های ذخیره‌شده
+
+همهٔ شناسه‌ها مخصوص رامش است: بستهٔ `com.ramesh.sms`، تنظیمات `ramesh_preferences`،
+`ramesh_appearance` و `ramesh_test_lab`، پایگاه‌دادهٔ `ramesh_filters.db` و کانال‌های اعلان
+`ramesh_sms_alert_channel` و `ramesh_sms_silent_channel`.
+
+چون شناسهٔ بسته تازه است، رامش داده‌های میسگا را نمی‌خواند: به‌صورت برنامهٔ جداگانه نصب می‌شود،
+با مجموعهٔ فیلتر تازه شروع می‌کند و در دوران گذار می‌تواند کنار میسگا بماند. بعد از اینکه
+فیلترها را از Filter Studio خروجی گرفتید، حذف میسگا بی‌خطر است.
+
+### حریم خصوصی
+
+- بدون دسترسی اینترنت، بدون تحلیل‌گر، بدون تبلیغات و بدون کتابخانهٔ شخص ثالث.
+- پیام‌ها و قوانین فقط روی دستگاه می‌مانند.
+- عکس مخاطب و پس‌زمینه فقط وقتی خودتان انتخاب کنید و از طریق انتخاب‌گر سیستم خوانده می‌شوند.
+
+### مشارکت
+
+گزارش خطا و درخواست تغییر: <https://github.com/zodiacc7/ramesh>
+
+### اعتبار و پروانه
+
+رامش بر پایهٔ [میسگا](https://github.com/mirarr-app/Misga) ساختهٔ Mirarr است و از
+[Textra SMS](https://textra.app) الهام گرفته. فونت‌ها:
+[Vazirmatn](https://github.com/rastikerdar/vazirmatn) و
+[Plus Jakarta Sans](https://github.com/tokotype/PlusJakartaSans) (هر دو با پروانهٔ SIL OFL).
+پروانه: **GNU GPL v3** — فایل [LICENSE](LICENSE).
 
 </div>
