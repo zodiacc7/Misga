@@ -1,0 +1,7 @@
+Beta of Ramesh 1.1.
+
+- Tabs have a single Telegram-style editor: name, senders and "show only" filters (spam / not spam / contacts / unknown) in one screen; the filter sheet no longer closes itself.
+- Swipe actions on messages: choose Off / Mark as read / Delete for each direction.
+- Delivery reports are off by default.
+- The whole interface is now translated (English and Persian, following the system language).
+- Beta builds are published as GitHub prereleases.
