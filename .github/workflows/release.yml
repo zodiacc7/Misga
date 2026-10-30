@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     tags:
+      # Stable tags (1.0.0) and beta tags (1.1.0-beta.1) both build a signed APK.
       - "[0-9]+.[0-9]+.[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+-*"
 
 permissions:
   contents: write
