@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inbox_search">جستجو</string>
+    <string name="inbox_clear_search">پاک کردن جستجو</string>
+    <string name="inbox_no_messages">پیامی نیست</string>
+    <string name="inbox_manage_senders">مدیریت فرستنده‌ها</string>
+    <string name="inbox_more_options">گزینه‌های بیشتر</string>
+    <string name="inbox_filter_studio">استودیوی فیلتر</string>
+    <string name="inbox_customize">شخصی‌سازی صندوق ورودی</string>
+    <string name="inbox_settings">تنظیمات</string>
+    <string name="inbox_mark_all_read">علامت‌گذاری همه به‌عنوان خوانده‌شده</string>
+    <string name="inbox_test_lab">آزمایشگاه</string>
+    <string name="inbox_cancel_selection">لغو انتخاب</string>
+    <string name="inbox_add_to_tab">افزودن به تب</string>
+    <string name="inbox_mark_as_read">علامت‌گذاری به‌عنوان خوانده‌شده</string>
+    <string name="inbox_delete_selected">حذف انتخاب‌شده‌ها</string>
+    <string name="inbox_selected">انتخاب‌شده</string>
+    <string name="inbox_delete">حذف</string>
+    <string name="inbox_cancel">انصراف</string>
+    <string name="inbox_marked_read_count">%1$d گفتگو خوانده‌شده شد</string>
+    <string name="inbox_all_marked_read">همهٔ گفتگوها خوانده‌شده شدند</string>
+    <string name="inbox_all_already_read">همهٔ گفتگوها از قبل خوانده شده‌اند</string>
+    <string name="inbox_showing_contacts_only">فقط مخاطبین نمایش داده می‌شود</string>
+    <string name="inbox_showing_all">همهٔ گفتگوها نمایش داده می‌شود</string>
+    <string name="inbox_deleted_count">%1$d گفتگو حذف شد</string>
+    <string name="inbox_added_to_tab_count">%1$d گفتگو به تب افزوده شد</string>
+    <string name="inbox_tab_created">تب %1$s ساخته شد</string>
+    <string name="inbox_tab_saved">تب %1$s ذخیره شد</string>
+    <string name="inbox_tab_deleted">تب %1$s حذف شد</string>
+    <string name="inbox_delete_confirm_title">%1$d گفتگو حذف شود؟</string>
+    <string name="inbox_delete_confirm_body">آیا از حذف %1$d گفتگوی انتخاب‌شده و همهٔ پیام‌های آن مطمئن هستید؟ این کار قابل بازگشت نیست.</string>
+</resources>

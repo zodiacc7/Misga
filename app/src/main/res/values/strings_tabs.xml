@@ -21,4 +21,15 @@
     <string name="tab_row_senders">Senders and filters</string>
     <string name="tab_row_senders_desc">Who appears in this tab</string>
     <string name="tab_row_delete">Delete tab</string>
+    <string name="tab_create_title">Create tab</string>
+    <string name="tab_create_sub">Organize conversations by group (e.g. Family, Friends, Work).</string>
+    <string name="tab_name_hint">e.g. Family, Friends</string>
+    <string name="tab_create">Create</string>
+    <string name="tab_delete_title">Delete \"%1$s\" tab?</string>
+    <string name="tab_delete_body">This tab will be removed. Your conversations and messages will not be deleted.</string>
+    <string name="tab_add_title">Add to tab</string>
+    <string name="tab_add_body">Add %1$d conversations to one or more tabs:</string>
+    <string name="tab_none_yet">No tabs created yet</string>
+    <string name="tab_none_hint">Tap \'New Tab\' above to create one.</string>
+    <string name="tab_sender_count">%1$d senders</string>
 </resources>

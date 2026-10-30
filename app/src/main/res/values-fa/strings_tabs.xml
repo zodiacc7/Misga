@@ -21,4 +21,15 @@
     <string name="tab_row_senders">فرستنده‌ها و فیلترها</string>
     <string name="tab_row_senders_desc">چه کسانی در این تب دیده شوند</string>
     <string name="tab_row_delete">حذف تب</string>
+    <string name="tab_create_title">ساخت تب</string>
+    <string name="tab_create_sub">گفتگوها را در گروه‌هایی مثل خانواده، دوستان یا کار سازمان‌دهی کنید.</string>
+    <string name="tab_name_hint">مثلاً خانواده، دوستان</string>
+    <string name="tab_create">ساختن</string>
+    <string name="tab_delete_title">تب «%1$s» حذف شود؟</string>
+    <string name="tab_delete_body">این تب حذف می‌شود، اما گفتگوها و پیام‌های شما پاک نمی‌شوند.</string>
+    <string name="tab_add_title">افزودن به تب</string>
+    <string name="tab_add_body">%1$d گفتگو به یک یا چند تب افزوده شود:</string>
+    <string name="tab_none_yet">هنوز تبی ساخته نشده است</string>
+    <string name="tab_none_hint">برای ساخت، روی «تب جدید» در بالا بزنید.</string>
+    <string name="tab_sender_count">%1$d فرستنده</string>
 </resources>

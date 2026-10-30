@@ -94,6 +94,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -104,6 +105,7 @@ import com.ramesh.sms.data.model.SimInfo
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.ramesh.sms.data.model.SmsMessage
+import com.ramesh.sms.R
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.InputBarShape
 import com.ramesh.sms.theme.PillShape
@@ -333,7 +335,7 @@ fun ChatScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.clearSelection() }) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel selection")
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.chat_cancel_selection))
                         }
                     },
                     actions = {
@@ -350,7 +352,7 @@ fun ChatScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.AddReaction,
-                                        contentDescription = "React to message",
+                                        contentDescription = stringResource(R.string.chat_react),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -363,7 +365,7 @@ fun ChatScreen(
                                 IconButton(onClick = onShowInfoForSelected) {
                                     Icon(
                                         imageVector = Icons.Default.Info,
-                                        contentDescription = "Message info",
+                                        contentDescription = stringResource(R.string.chat_message_info),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -377,7 +379,7 @@ fun ChatScreen(
                             IconButton(onClick = { showBatchDeleteConfirmDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete selected",
+                                    contentDescription = stringResource(R.string.chat_delete_selected),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -431,7 +433,7 @@ fun ChatScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.chat_back))
                         }
                     },
                     actions = {
@@ -449,7 +451,7 @@ fun ChatScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Call,
-                                        contentDescription = "Call Contact",
+                                        contentDescription = stringResource(R.string.chat_call_contact),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -464,7 +466,7 @@ fun ChatScreen(
                             IconButton(onClick = { showSettingsSheet = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Tune,
-                                    contentDescription = "Participant Notification Settings",
+                                    contentDescription = stringResource(R.string.chat_participant_settings),
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -566,7 +568,7 @@ fun ChatScreen(
                             } else {
                                 Icon(
                                     Icons.AutoMirrored.Filled.Send,
-                                    contentDescription = "Send",
+                                    contentDescription = stringResource(R.string.chat_send),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -686,7 +688,7 @@ fun ChatScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Scroll to bottom",
+                        contentDescription = stringResource(R.string.chat_scroll_to_bottom),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -830,16 +832,25 @@ fun ChatScreen(
                 FilledTonalButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("SMS Message", msg.body))
-                        Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                        clipboard.setPrimaryClip(
+                            ClipData.newPlainText(
+                                context.getString(R.string.chat_sms_message),
+                                msg.body
+                            )
+                        )
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.chat_copied),
+                            Toast.LENGTH_SHORT
+                        ).show()
                         viewModel.clearSelection()
                         selectedMessageForDialog = null
                     },
                     shape = PillShape
                 ) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.chat_copy), modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Copy", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.chat_copy), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -850,9 +861,13 @@ fun ChatScreen(
                         selectedMessageForDialog = null
                     }
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.chat_delete), tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.chat_delete),
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         )
@@ -901,7 +916,7 @@ fun ChatScreen(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.chat_delete),
                         tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(16.dp)
                     )
@@ -915,7 +930,7 @@ fun ChatScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showBatchDeleteConfirmDialog = false }) {
-                    Text("Cancel", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.chat_cancel), fontWeight = FontWeight.SemiBold)
                 }
             }
         )
@@ -1189,7 +1204,7 @@ private fun ReactionPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.chat_close)) }
         }
     )
 }
@@ -1211,13 +1226,13 @@ private fun PendingSendBar(secondsLeft: Int, onCancel: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Sending in ${secondsLeft}s",
+                text = stringResource(R.string.chat_sending_in, secondsLeft),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                 modifier = Modifier.weight(1f)
             )
             TextButton(onClick = onCancel) {
-                Text("Cancel", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.chat_cancel), fontWeight = FontWeight.Bold)
             }
         }
     }

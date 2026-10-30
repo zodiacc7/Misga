@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -141,7 +142,7 @@ fun ComposeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "New Message",
+                        text = stringResource(R.string.compose_new_message),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold
                     )
@@ -300,8 +301,8 @@ fun ComposeScreen(
                     recipient = it
                     selectedContactName = null
                 },
-                label = { Text("To (Name or Number)") },
-                placeholder = { Text("Type name or phone number...") },
+                label = { Text(stringResource(R.string.compose_to_label)) },
+                placeholder = { Text(stringResource(R.string.compose_to_placeholder)) },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Person,
@@ -375,7 +376,7 @@ fun ComposeScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No contacts found",
+                            text = stringResource(R.string.compose_no_contacts),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -455,7 +456,7 @@ private fun SendToNumberItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Send to $address",
+                text = stringResource(R.string.compose_send_to, address),
                 style = MaterialTheme.typography.titleMedium.contentAware(),
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
@@ -464,7 +465,7 @@ private fun SendToNumberItem(
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Start a conversation",
+                text = stringResource(R.string.compose_start_conversation),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )

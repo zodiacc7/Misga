@@ -202,7 +202,7 @@ fun ConversationsScreen(
                     viewModel.markSelectedConversationsRead { count ->
                         Toast.makeText(
                             context,
-                            "Marked $count conversation${if (count > 1) "s" else ""} as read",
+                            context.getString(R.string.inbox_marked_read_count, count),
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -212,17 +212,29 @@ fun ConversationsScreen(
                 onAddToTab = { showAddToTabDialog = true },
                 onToggleContactsOnly = {
                     viewModel.toggleContactsOnly()
-                    val msg = if (!state.showContactsOnly) "Showing contacts only" else "Showing all conversations"
+                    val msg = if (!state.showContactsOnly) {
+                        context.getString(R.string.inbox_showing_contacts_only)
+                    } else {
+                        context.getString(R.string.inbox_showing_all)
+                    }
                     Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                 },
                 onMarkAllRead = {
                     val hasUnread = state.threads.any { it.unreadCount > 0 }
                     if (hasUnread) {
                         viewModel.markAllConversationsRead {
-                            Toast.makeText(context, "All conversations marked as read", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.inbox_all_marked_read),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } else {
-                        Toast.makeText(context, "All conversations are already read", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.inbox_all_already_read),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 },
                 onNavigateToTestLab = onNavigateToTestLab,
@@ -280,7 +292,7 @@ fun ConversationsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Search,
-                            contentDescription = "Search",
+                            contentDescription = stringResource(R.string.inbox_search),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(22.dp)
                         )
@@ -300,7 +312,7 @@ fun ConversationsScreen(
                                     IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
                                         Icon(
                                             Icons.Default.Close,
-                                            contentDescription = "Clear search",
+                                            contentDescription = stringResource(R.string.inbox_clear_search),
                                             modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -465,7 +477,7 @@ fun ConversationsScreen(
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.Search,
-                                        contentDescription = "No messages",
+                                        contentDescription = stringResource(R.string.inbox_no_messages),
                                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                         modifier = Modifier.size(40.dp)
                                     )
@@ -602,7 +614,7 @@ fun ConversationsScreen(
                                     imageVector = if (selectedTab != null) Icons.Default.FolderOpen
                                     else if (state.showContactsOnly) Icons.Default.Contacts
                                     else Icons.Default.Shield,
-                                    contentDescription = "No messages",
+                                    contentDescription = stringResource(R.string.inbox_no_messages),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                                     modifier = Modifier.size(40.dp)
                                 )
@@ -639,7 +651,7 @@ fun ConversationsScreen(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Manage Senders", fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.inbox_manage_senders), fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -676,7 +688,7 @@ fun ConversationsScreen(
             onConfirm = { deletedCount ->
                 Toast.makeText(
                     context,
-                    "Deleted $deletedCount conversation${if (deletedCount > 1) "s" else ""}",
+                    context.getString(R.string.inbox_deleted_count, deletedCount),
                     Toast.LENGTH_SHORT
                 ).show()
             },
@@ -694,11 +706,19 @@ fun ConversationsScreen(
                 onSave = { name, addresses, filterMask ->
                     if (liveTab == null) {
                         viewModel.createTab(name, addresses, filterMask) {
-                            Toast.makeText(context, "Created tab \"$name\"", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.inbox_tab_created, name),
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } else {
                         viewModel.saveTab(liveTab.id, name, addresses, filterMask)
-                        Toast.makeText(context, "Saved tab \"$name\"", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.inbox_tab_saved, name),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     tabEditorId = null
                 }
@@ -727,7 +747,11 @@ fun ConversationsScreen(
             onDismiss = { tabToDelete = null },
             onConfirm = {
                 viewModel.deleteTab(tab.id)
-                Toast.makeText(context, "Deleted tab \"${tab.name}\"", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.inbox_tab_deleted, tab.name),
+                    Toast.LENGTH_SHORT
+                ).show()
                 tabToDelete = null
             }
         )
@@ -742,7 +766,7 @@ fun ConversationsScreen(
                 viewModel.addSelectedToTabs(tabIds) { count ->
                     Toast.makeText(
                         context,
-                        "Added $count conversation${if (count > 1) "s" else ""} to tab",
+                        context.getString(R.string.inbox_added_to_tab_count, count),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -846,7 +870,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onClearSelection) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Cancel selection",
+                        contentDescription = stringResource(R.string.inbox_cancel_selection),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -864,7 +888,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = onAddToTab) {
                         Icon(
                             imageVector = Icons.Default.DriveFileMove,
-                            contentDescription = "Add to Tab",
+                            contentDescription = stringResource(R.string.inbox_add_to_tab),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -873,7 +897,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onMarkSelectedRead) {
                     Icon(
                         imageVector = Icons.Default.MarkChatRead,
-                        contentDescription = "Mark as read",
+                        contentDescription = stringResource(R.string.inbox_mark_as_read),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -881,7 +905,7 @@ private fun ConversationsTopBar(
                 IconButton(onClick = onDeleteSelected) {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete selected",
+                        contentDescription = stringResource(R.string.inbox_delete_selected),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -943,7 +967,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = onNavigateToFilterStudio) {
                         Icon(
                             imageVector = Icons.Default.FilterAlt,
-                            contentDescription = "Filter Studio",
+                            contentDescription = stringResource(R.string.inbox_filter_studio),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -955,7 +979,7 @@ private fun ConversationsTopBar(
                     IconButton(onClick = { showOverflowMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
+                            contentDescription = stringResource(R.string.inbox_more_options),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -964,7 +988,7 @@ private fun ConversationsTopBar(
                         onDismissRequest = { showOverflowMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Customize inbox") },
+                            text = { Text(stringResource(R.string.inbox_customize)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Tune, contentDescription = null)
                             },
@@ -974,7 +998,7 @@ private fun ConversationsTopBar(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Settings") },
+                            text = { Text(stringResource(R.string.inbox_settings)) },
                             leadingIcon = {
                                 Icon(Icons.Default.Settings, contentDescription = null)
                             },
@@ -985,7 +1009,7 @@ private fun ConversationsTopBar(
                         )
                         if (threads.isNotEmpty()) {
                             DropdownMenuItem(
-                                text = { Text("Mark all as read") },
+                                text = { Text(stringResource(R.string.inbox_mark_all_read)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.MarkChatRead, contentDescription = null)
                                 },
@@ -997,7 +1021,7 @@ private fun ConversationsTopBar(
                         }
                         if (isDebuggable) {
                             DropdownMenuItem(
-                                text = { Text("Test Lab") },
+                                text = { Text(stringResource(R.string.inbox_test_lab)) },
                                 leadingIcon = {
                                     Icon(Icons.Default.BugReport, contentDescription = null)
                                 },
@@ -1094,14 +1118,14 @@ private fun BatchDeleteConversationsDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Delete $count conversation${if (count > 1) "s" else ""}?",
+                text = stringResource(R.string.inbox_delete_confirm_title, count),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Text(
-                text = "Are you sure you want to delete $count selected conversation${if (count > 1) "s" else ""} and all associated messages? This action cannot be undone.",
+                text = stringResource(R.string.inbox_delete_confirm_body, count),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -1112,12 +1136,16 @@ private fun BatchDeleteConversationsDialog(
                     onDelete { deletedCount -> onConfirm(deletedCount) }
                 }
             ) {
-                Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.inbox_delete),
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.inbox_cancel))
             }
         }
     )
@@ -1175,7 +1203,7 @@ private fun ConversationItem(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
+                        contentDescription = stringResource(R.string.inbox_selected),
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(26.dp)
                     )

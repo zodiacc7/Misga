@@ -55,7 +55,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.data.util.PhoneNumberKeys
@@ -78,7 +80,7 @@ fun CreateTabDialog(
         shape = SquircleCardShape,
         title = {
             Text(
-                text = "Create Tab",
+                text = stringResource(R.string.tab_create_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -86,7 +88,7 @@ fun CreateTabDialog(
         text = {
             Column {
                 Text(
-                    text = "Organize conversations by group (e.g. Family, Friends, Work).",
+                    text = stringResource(R.string.tab_create_sub),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -94,8 +96,8 @@ fun CreateTabDialog(
                 OutlinedTextField(
                     value = tabName,
                     onValueChange = { tabName = it },
-                    label = { Text("Tab Name") },
-                    placeholder = { Text("e.g. Family, Friends") },
+                    label = { Text(stringResource(R.string.tab_name_label)) },
+                    placeholder = { Text(stringResource(R.string.tab_name_hint)) },
                     singleLine = true,
                     textStyle = LocalTextStyle.current.contentAware(),
                     shape = MaterialTheme.shapes.medium,
@@ -113,65 +115,12 @@ fun CreateTabDialog(
                 enabled = !isBlank,
                 shape = PillShape
             ) {
-                Text("Create", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.tab_create), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun RenameTabDialog(
-    currentName: String,
-    onDismiss: () -> Unit,
-    onRename: (String) -> Unit
-) {
-    var tabName by remember { mutableStateOf(currentName) }
-    val isBlank = tabName.trim().isBlank()
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = SquircleCardShape,
-        title = {
-            Text(
-                text = "Rename Tab",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = tabName,
-                    onValueChange = { tabName = it },
-                    label = { Text("New Tab Name") },
-                    singleLine = true,
-                    textStyle = LocalTextStyle.current.contentAware(),
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            FilledTonalButton(
-                onClick = {
-                    if (!isBlank) {
-                        onRename(tabName.trim())
-                    }
-                },
-                enabled = !isBlank,
-                shape = PillShape
-            ) {
-                Text("Rename", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
@@ -188,14 +137,14 @@ fun DeleteTabDialog(
         shape = SquircleCardShape,
         title = {
             Text(
-                text = "Delete \"$tabName\" Tab?",
+                text = stringResource(R.string.tab_delete_title, tabName),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
         },
         text = {
             Text(
-                text = "This tab will be removed. Your conversations and messages will not be deleted.",
+                text = stringResource(R.string.tab_delete_body),
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -210,88 +159,8 @@ fun DeleteTabDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
-        }
-    )
-}
-
-/** Human readable summary of a tab's content mask, e.g. "Spam + contacts". */
-fun filterSummary(tab: SenderTab): String {
-    val parts = mutableListOf<String>()
-    val wantsSpam = tab.spamOnly && !tab.nonSpamOnly
-    val wantsNonSpam = tab.nonSpamOnly && !tab.spamOnly
-    val wantsContacts = tab.contactsOnly && !tab.nonContactsOnly
-    val wantsNonContacts = tab.nonContactsOnly && !tab.contactsOnly
-    if (wantsSpam) parts.add("Spam")
-    if (wantsNonSpam) parts.add("Not spam")
-    if (wantsContacts) parts.add("Contacts")
-    if (wantsNonContacts) parts.add("Unknown senders")
-    return if (parts.isEmpty()) "All conversations" else parts.joinToString(" + ")
-}
-
-/** Lets a tab show only spam / non-spam / contacts / unknown senders, or any combination. */
-@Composable
-fun TabFilterDialog(
-    tab: SenderTab,
-    onToggle: (Int, Boolean) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val options = listOf(
-        Triple(SenderTab.MASK_SPAM_ONLY, "Only spam", "Conversations whose last message was filtered as spam"),
-        Triple(SenderTab.MASK_NON_SPAM_ONLY, "Only non-spam", "Skip conversations marked as spam"),
-        Triple(SenderTab.MASK_CONTACTS_ONLY, "Only contacts", "Saved contacts only"),
-        Triple(SenderTab.MASK_NON_CONTACTS_ONLY, "Only unknown senders", "Hide saved contacts")
-    )
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = SquircleCardShape,
-        title = {
-            Column {
-                Text(
-                    text = "Filter “${tab.name}”",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = filterSummary(tab),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-        },
-        text = {
-            Column {
-                options.forEach { (mask, title, subtitle) ->
-                    val checked = tab.filterMask and mask != 0
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.small)
-                            .clickable { onToggle(mask, !checked) }
-                            .padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(checked = checked, onCheckedChange = { onToggle(mask, it) })
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
-                            )
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Done", fontWeight = FontWeight.Bold) }
         }
     )
 }
@@ -316,21 +185,21 @@ fun AddToTabDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Add to Tab",
+                    text = stringResource(R.string.tab_add_title),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 TextButton(onClick = onCreateNewTab) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("New Tab")
+                    Text(stringResource(R.string.tab_new_title))
                 }
             }
         },
         text = {
             Column {
                 Text(
-                    text = "Add $selectedCount conversation${if (selectedCount > 1) "s" else ""} to one or more tabs:",
+                    text = stringResource(R.string.tab_add_body, selectedCount),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -347,13 +216,13 @@ fun AddToTabDialog(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "No tabs created yet",
+                                text = stringResource(R.string.tab_none_yet),
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Tap 'New Tab' above to create one.",
+                                text = stringResource(R.string.tab_none_hint),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -385,7 +254,7 @@ fun AddToTabDialog(
                                         fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Normal
                                     )
                                     Text(
-                                        text = "${tab.senderAddresses.size} senders",
+                                        text = stringResource(R.string.tab_sender_count, tab.senderAddresses.size),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.outline
                                     )
@@ -407,204 +276,14 @@ fun AddToTabDialog(
                 enabled = checkedIds.isNotEmpty(),
                 shape = PillShape
             ) {
-                Text("Add", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.action_add), fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(stringResource(R.string.action_cancel))
             }
         }
     )
 }
 
-@Composable
-fun ManageTabSendersDialog(
-    tab: SenderTab,
-    allThreads: List<ConversationThread>,
-    onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit
-) {
-    // Unique senders from all available threads
-    val distinctSenders = remember(allThreads) {
-        allThreads.distinctBy { PhoneNumberKeys.canonical(it.address) }
-    }
-
-    // Map: canonical address -> isSelected
-    val memberMap = remember(tab.senderAddresses, distinctSenders) {
-        val map = mutableStateMapOf<String, Boolean>()
-        for (sender in distinctSenders) {
-            val canonical = PhoneNumberKeys.canonical(sender.address)
-            val isMember = canonical in tab.senderAddresses ||
-                    PhoneNumberKeys.keys(sender.address).any { it in tab.senderAddresses }
-            map[canonical] = isMember
-        }
-        map
-    }
-
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredSenders = remember(distinctSenders, searchQuery) {
-        if (searchQuery.isBlank()) distinctSenders
-        else {
-            val query = searchQuery.trim()
-            distinctSenders.filter {
-                (it.contactName?.contains(query, ignoreCase = true) == true) ||
-                        it.address.contains(query, ignoreCase = true)
-            }
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = SquircleCardShape,
-        title = {
-            Column {
-                Text(
-                    text = "Senders in \"${tab.name}\"",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                val selectedCount = memberMap.count { it.value }
-                Text(
-                    text = "$selectedCount sender${if (selectedCount == 1) "" else "s"} selected",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Surface(
-                    shape = PillShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Search senders",
-                            tint = MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = {
-                                Text(
-                                    "Search senders...",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            },
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = { searchQuery = "" }) {
-                                        Icon(
-                                            Icons.Default.Close,
-                                            contentDescription = "Clear",
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
-                                }
-                            },
-                            singleLine = true,
-                            textStyle = LocalTextStyle.current.contentAware(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (filteredSenders.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (searchQuery.isBlank()) "No senders found" else "No senders match \"$searchQuery\"",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                } else {
-                    LazyColumn(modifier = Modifier.heightIn(max = 280.dp)) {
-                        items(filteredSenders, key = { it.threadId }) { sender ->
-                            val canonical = PhoneNumberKeys.canonical(sender.address)
-                            val isChecked = memberMap[canonical] == true
-                            val displayName = senderDisplayName(sender.contactName, sender.address)
-
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(MaterialTheme.shapes.small)
-                                    .clickable { memberMap[canonical] = !isChecked }
-                                    .padding(vertical = 6.dp, horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                ConversationAvatar(
-                                    address = sender.address,
-                                    contactName = sender.contactName,
-                                    size = 38.dp
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = displayName,
-                                        style = MaterialTheme.typography.bodyMedium.contentAware(),
-                                        fontWeight = if (isChecked) FontWeight.Bold else FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (sender.contactName != null) {
-                                        Text(
-                                            text = sender.address,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                            maxLines = 1
-                                        )
-                                    }
-                                }
-                                Checkbox(
-                                    checked = isChecked,
-                                    onCheckedChange = { memberMap[canonical] = it }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            FilledTonalButton(
-                onClick = {
-                    val selectedAddresses = memberMap.filterValues { it }.keys.toList()
-                    onSave(selectedAddresses)
-                },
-                shape = PillShape
-            ) {
-                Text("Save", fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
