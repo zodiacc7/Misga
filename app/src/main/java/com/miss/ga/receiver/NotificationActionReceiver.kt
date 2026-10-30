@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import com.miss.ga.R
 import com.miss.ga.data.repository.SmsRepository
 import com.miss.ga.data.util.PhoneNumberKeys
 import kotlinx.coroutines.CoroutineScope
@@ -26,6 +27,8 @@ class NotificationActionReceiver : BroadcastReceiver() {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         scope.launch {
             try {
+                // Copying a code must not silently mark the thread as read.
+                var skipThreadRead = false
                 when (intent.action) {
                     NotificationActions.ACTION_REPLY -> {
                         val address = intent.getStringExtra(NotificationActions.EXTRA_ADDRESS).orEmpty()
@@ -37,6 +40,21 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         SmsRepository(context).sendSms(address, replyBody)
                     }
                     NotificationActions.ACTION_MARK_READ -> Unit
+                    NotificationActions.ACTION_COPY_OTP -> {
+                        val code = intent.getStringExtra(NotificationActions.EXTRA_OTP_CODE)
+                        if (code.isNullOrBlank()) {
+                            Log.w(TAG, "Copy-code action missing code")
+                            return@launch
+                        }
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OTP", code))
+                        android.widget.Toast.makeText(
+                            context.applicationContext,
+                            context.getString(R.string.toast_code_copied, code),
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                        skipThreadRead = true
+                    }
                     NotificationActions.ACTION_DELETE -> {
                         val messageId = intent.getLongExtra(NotificationActions.EXTRA_MESSAGE_ID, -1L)
                         if (messageId > 0) {
@@ -52,7 +70,9 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     else -> return@launch
                 }
                 if (threadId > 0) {
-                    SmsRepository(context).markThreadRead(threadId)
+                    if (!skipThreadRead) {
+                        SmsRepository(context).markThreadRead(threadId)
+                    }
                     NotificationActions.cancel(context, threadId)
                 }
             } catch (e: Exception) {
@@ -82,10 +102,12 @@ object NotificationActions {
     const val ACTION_REPLY = "com.miss.ga.ACTION_NOTIFICATION_REPLY"
     const val ACTION_MARK_READ = "com.miss.ga.ACTION_NOTIFICATION_MARK_READ"
     const val ACTION_DELETE = "com.miss.ga.ACTION_NOTIFICATION_DELETE"
+    const val ACTION_COPY_OTP = "com.miss.ga.ACTION_NOTIFICATION_COPY_OTP"
     const val KEY_REPLY_TEXT = "com.miss.ga.KEY_NOTIFICATION_REPLY_TEXT"
     const val EXTRA_THREAD_ID = "EXTRA_THREAD_ID"
     const val EXTRA_ADDRESS = "EXTRA_ADDRESS"
     const val EXTRA_MESSAGE_ID = "EXTRA_MESSAGE_ID"
+    const val EXTRA_OTP_CODE = "EXTRA_OTP_CODE"
 
     fun cancel(context: Context, threadId: Long) {
         val notificationId = (threadId xor (threadId ushr 32)).toInt()
