@@ -16,7 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.ConversationThread
 import com.miss.ga.data.model.SearchMessageResult
 import com.miss.ga.data.model.SenderTab
@@ -64,7 +64,7 @@ class ConversationsViewModel(
     constructor(application: Application) : this(application, AppPreferences(application))
 
     private val repository = SmsRepository(application, userPreferences)
-    private val dbHelper = MisgaDatabaseHelper.getInstance(application)
+    private val dbHelper = RameshDatabaseHelper.getInstance(application)
     private var searchJob: Job? = null
     private var loadJob: Job? = null
     private var defaultSmsCheckJob: Job? = null

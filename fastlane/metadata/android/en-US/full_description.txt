@@ -1,16 +1,19 @@
-An Android SMS application designed to solve the spam and advertisement problem in Iran.
+A spam-free SMS app for Iran, with a Textra-style look you can customise completely.
 
-Iran's SMS has turned into a flood of spam messages and unwanted promotions. Misga fixes this with powerful regex filters and predefined rules that automatically silence spam and keep your notifications clean.
+Iranian SMS has turned into a flood of ads, promotions and scams, mixed with verification codes you cannot afford to miss. Ramesh filters the noise with regex rules you control, and an allowlist makes sure OTPs and banking messages always get through.
 
 <b>Features</b>
 <ul>
-  <li><b>Regex filters with allowlist priority:</b> Allowlist rules are evaluated first so you never miss critical OTP verification codes or banking messages.</li>
-  <li><b>Built-in Iranian spam presets:</b> Ships with filters for Iranian spam, ads, and scams, which you can customize or replace.</li>
-  <li><b>Filter Studio:</b> Add custom regex or substring rules, test patterns against sample text, and import/export filter lists as JSON.</li>
-  <li><b>Material 3 Expressive:</b> Clean, intuitive UI built with modern Material Design 3.</li>
-  <li><b>Dual SIM support:</b> Seamlessly view and manage conversations across multiple SIM cards.</li>
+  <li><b>Regex filters with allowlist priority:</b> allowlist rules are evaluated first, so you never miss an OTP or a bank message.</li>
+  <li><b>Built-in Iranian spam presets:</b> ships with filters for Iranian spam, ads, phishing and scams; keep, edit, disable or delete any of them.</li>
+  <li><b>Filter Studio:</b> add custom regex or substring rules, test patterns against sample text, and export/import the whole rule set as JSON.</li>
+  <li><b>Textra-style appearance:</b> auto, light, dark and true-black themes, accent colors, bubble shapes with an optional tail, separate sent and received colors, message fonts and sizes, gallery wallpapers and contact photos.</li>
+  <li><b>Dual SIM:</b> choose the SIM per message, see which SIM received a message, and filter the inbox by SIM.</li>
+  <li><b>Quiet notifications:</b> filtered messages arrive silently, spam produces no notification, and notifications support inline reply, mark as read and copying verification codes.</li>
+  <li><b>Material 3 Expressive UI</b> with correct right-to-left text and optional Shamsi dates.</li>
+  <li><b>No internet permission:</b> no ads, no analytics, no third-party SDKs; everything stays on the device.</li>
 </ul>
 
-Set Misga as your default SMS app so it can filter incoming messages in real time.
+Set Ramesh as your default SMS app so it can filter incoming messages in real time.
 
-<i>Note: Multimedia messages (MMS) are currently not supported.</i>
+<i>Note: multimedia messages (MMS) are not supported.</i>

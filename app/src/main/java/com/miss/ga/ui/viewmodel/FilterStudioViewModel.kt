@@ -3,7 +3,7 @@ package com.miss.ga.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.FilterAction
 import com.miss.ga.data.model.FilterRule
 import com.miss.ga.data.model.RuleCategory
@@ -38,7 +38,7 @@ data class FilterStudioUiState(
 
 class FilterStudioViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val dbHelper = MisgaDatabaseHelper.getInstance(application)
+    private val dbHelper = RameshDatabaseHelper.getInstance(application)
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
     private var playgroundTestJob: Job? = null
 

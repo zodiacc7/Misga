@@ -162,7 +162,7 @@ fun FilterStudioScreen(
                     IconButton(onClick = {
                         val json = viewModel.exportRulesJson()
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        clipboard.setPrimaryClip(ClipData.newPlainText("Misga Rules", json))
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Ramesh Rules", json))
                         Toast.makeText(context, "Exported ${state.rules.size} rules with listType to clipboard", Toast.LENGTH_SHORT).show()
                     }) {
                         Icon(Icons.Default.Download, contentDescription = "Export Rules JSON")

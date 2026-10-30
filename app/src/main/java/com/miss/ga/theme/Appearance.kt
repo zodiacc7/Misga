@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.luminance
 /**
  * Textra-style customisation model.
  *
- * Everything the user can tweak about the look of Misga lives here so it can be
+ * Everything the user can tweak about the look of Ramesh lives here so it can be
  * persisted in one place and read from any composable through [AppearanceStore].
  */
 @Immutable
@@ -60,7 +60,7 @@ enum class ChatFontFamily(val label: String) {
 }
 
 /**
- * Accent palettes. The teal entry keeps Misga's brand colour; the rest are
+ * Accent palettes. The teal entry keeps Ramesh's brand colour; the rest are
  * hand-tuned Material tones so every accent works in light, dark and black.
  */
 @Immutable

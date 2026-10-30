@@ -27,5 +27,5 @@ dependencyResolutionManagement {
 
 
 
-rootProject.name = "MISGA"
+rootProject.name = "Ramesh"
 include(":app")

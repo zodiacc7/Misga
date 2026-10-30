@@ -8,7 +8,7 @@ import android.provider.Telephony
 import android.telephony.SubscriptionManager
 import android.telephony.SmsMessage as AndroidSmsMessage
 import android.util.Log
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.db.SpamMetaWrite
 import com.miss.ga.data.model.FilterAction
 import com.miss.ga.data.repository.SmsRepository
@@ -97,7 +97,7 @@ class SmsReceiver : BroadcastReceiver() {
         isDefaultAppDeliver: Boolean,
         incomingSubId: Int = SubscriptionManager.INVALID_SUBSCRIPTION_ID
     ) {
-        val dbHelper = MisgaDatabaseHelper.getInstance(context)
+        val dbHelper = RameshDatabaseHelper.getInstance(context)
         val userPreferences = AppPreferences(context)
         val filterEngine = SmsFilterEngine(dbHelper, userPreferences)
         val notificationHelper = NotificationHelper.getInstance(context)
@@ -155,7 +155,7 @@ class SmsReceiver : BroadcastReceiver() {
             val contactName = smsRepository.resolveContactName(sender)
             val isContact = !contactName.isNullOrBlank()
 
-            // Run through the MISGA hierarchical filter engine
+            // Run through the Ramesh hierarchical filter engine
             val filterResult = filterEngine.evaluateMessage(sender, fullBody, isContact = isContact)
 
             var messageId: Long = -1L

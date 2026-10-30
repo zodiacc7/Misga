@@ -82,7 +82,7 @@ private val DarkColors = darkColorScheme(
     outlineVariant = md_theme_dark_outlineVariant
 )
 
-/** Applies a Textra-style accent palette on top of Misga's base scheme. */
+/** Applies a Textra-style accent palette on top of Ramesh's base scheme. */
 private fun ColorScheme.withAccent(palette: AccentPalette, dark: Boolean): ColorScheme {
     return if (dark) {
         copy(
@@ -137,7 +137,7 @@ private fun ColorScheme.asBlack(): ColorScheme = copy(
 )
 
 @Composable
-fun MISGATheme(
+fun RameshTheme(
     appearance: Appearance = AppearanceStore.current,
     content: @Composable () -> Unit
 ) {

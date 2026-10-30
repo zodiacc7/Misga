@@ -292,7 +292,7 @@ fun ChatScreen(
                 } else if (!result.storedInProvider) {
                     Toast.makeText(
                         context,
-                        "Misga must be the default SMS app for sent messages to appear",
+                        "Ramesh must be the default SMS app for sent messages to appear",
                         Toast.LENGTH_LONG
                     ).show()
                 }

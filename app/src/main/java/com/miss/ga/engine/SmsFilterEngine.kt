@@ -1,6 +1,6 @@
 package com.miss.ga.engine
 
-import com.miss.ga.data.db.MisgaDatabaseHelper
+import com.miss.ga.data.db.RameshDatabaseHelper
 import com.miss.ga.data.model.FilterAction
 import com.miss.ga.data.model.FilterRule
 import com.miss.ga.data.util.PhoneNumberKeys
@@ -24,7 +24,7 @@ data class RegexTestResult(
 )
 
 class SmsFilterEngine(
-    private val dbHelper: MisgaDatabaseHelper,
+    private val dbHelper: RameshDatabaseHelper,
     private val userPreferences: UserPreferences? = null
 ) {
 

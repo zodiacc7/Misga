@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 
-class MisgaDatabaseHelper private constructor(context: Context) :
+class RameshDatabaseHelper private constructor(context: Context) :
     SQLiteOpenHelper(context.applicationContext, DATABASE_NAME, null, DATABASE_VERSION) {
 
     private val _rulesChanged = MutableStateFlow(System.currentTimeMillis())
@@ -1224,11 +1224,11 @@ class MisgaDatabaseHelper private constructor(context: Context) :
         private const val SQLITE_IN_CHUNK_SIZE = 500
 
         @Volatile
-        private var INSTANCE: MisgaDatabaseHelper? = null
+        private var INSTANCE: RameshDatabaseHelper? = null
 
-        fun getInstance(context: Context): MisgaDatabaseHelper {
+        fun getInstance(context: Context): RameshDatabaseHelper {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: MisgaDatabaseHelper(context).also { INSTANCE = it }
+                INSTANCE ?: RameshDatabaseHelper(context).also { INSTANCE = it }
             }
         }
     }

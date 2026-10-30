@@ -105,6 +105,7 @@ import androidx.compose.ui.semantics.Role
 import com.miss.ga.data.model.SenderTab
 import com.miss.ga.theme.AppearanceStore
 import com.miss.ga.theme.PillShape
+import com.miss.ga.theme.Vazirmatn
 import com.miss.ga.ui.components.AddToTabDialog
 import com.miss.ga.ui.components.ContactProfileDialog
 import com.miss.ga.ui.components.ConversationAvatar
@@ -919,10 +920,9 @@ private fun ConversationsTopBar(
             title = {
                 Column {
                     Text(
-                        text = "Misga",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "رامش",
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Vazirmatn),
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = (-0.5).sp,
                         color = MaterialTheme.colorScheme.primary
                     )
                     Text(

@@ -113,7 +113,7 @@ fun DefaultSmsBanner(
             Spacer(modifier = Modifier.height(10.dp))
 
             Text(
-                text = "Set Misga as your default SMS app to intercept Persian telecom spam, phishing messages, and silence intrusive advertiser blasts in real time.",
+                text = "Set Ramesh as your default SMS app to intercept Persian telecom spam, phishing messages, and silence intrusive advertiser blasts in real time.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
