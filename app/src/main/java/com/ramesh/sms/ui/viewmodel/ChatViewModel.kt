@@ -437,6 +437,19 @@ class ChatViewModel(
         }
     }
 
+    /** Toggles an emoji reaction: picking the current emoji again removes it. */
+    fun toggleReaction(messageId: Long, emoji: String) {
+        viewModelScope.launch {
+            val current = _uiState.value.messages.firstOrNull { it.id == messageId }?.reaction
+            val next = if (current == emoji) null else emoji
+            repository.setReaction(messageId, next)
+            val updated = _uiState.value.messages.map {
+                if (it.id == messageId) it.copy(reaction = next) else it
+            }
+            _uiState.value = _uiState.value.copy(messages = updated)
+        }
+    }
+
     fun markMessageNotSpam(messageId: Long) {
         viewModelScope.launch {
             repository.markMessageNotSpam(messageId)

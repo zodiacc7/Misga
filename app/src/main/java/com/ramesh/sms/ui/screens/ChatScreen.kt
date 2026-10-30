@@ -38,6 +38,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.AddReaction
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -269,6 +270,7 @@ fun ChatScreen(
             }
         }
     }
+    var reactionPickerMessageId by remember { mutableStateOf<Long?>(null) }
     val onShowInfoForSelected = remember(viewModel) {
         {
             val id = selectedMessageIds.singleOrNull()
@@ -329,6 +331,23 @@ fun ChatScreen(
                     },
                     actions = {
                         if (selectedMessageIds.size == 1) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.padding(end = 6.dp)
+                            ) {
+                                IconButton(
+                                    onClick = {
+                                        reactionPickerMessageId = selectedMessageIds.firstOrNull()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AddReaction,
+                                        contentDescription = "React to message",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -832,6 +851,20 @@ fun ChatScreen(
     }
 
     // Batch Delete Confirmation Dialog
+    val reactionTarget = reactionPickerMessageId
+    if (reactionTarget != null) {
+        val currentReaction = state.messages.firstOrNull { it.id == reactionTarget }?.reaction
+        ReactionPickerDialog(
+            currentReaction = currentReaction,
+            onPick = { emoji ->
+                viewModel.toggleReaction(reactionTarget, emoji)
+                viewModel.clearSelection()
+                reactionPickerMessageId = null
+            },
+            onDismiss = { reactionPickerMessageId = null }
+        )
+    }
+
     if (showBatchDeleteConfirmDialog) {
         val count = selectedMessageIds.size
         AlertDialog(
@@ -1018,6 +1051,56 @@ private fun ChatMessageList(
             }
         }
     }
+}
+
+private val ReactionEmojis = listOf("❤️", "👍", "😂", "😮", "😢", "🙏", "🔥", "🎉")
+
+/** Emoji reaction picker for a single selected message. */
+@Composable
+private fun ReactionPickerDialog(
+    currentReaction: String?,
+    onPick: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = MaterialTheme.shapes.extraLarge,
+        title = {
+            Text(
+                text = "React",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ReactionEmojis.forEach { emoji ->
+                    val selected = emoji == currentReaction
+                    Surface(
+                        onClick = { onPick(emoji) },
+                        shape = CircleShape,
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceContainerHigh
+                        }
+                    ) {
+                        Text(
+                            text = emoji,
+                            fontSize = 20.sp,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        }
+    )
 }
 
 /** Countdown bar shown while a send-delay is running; Cancel puts the text back in the composer. */

@@ -429,6 +429,7 @@ class SmsRepository(
             )
 
             val spamMeta = dbHelper.getSpamMetaMapForThread(address)
+            val reactions = dbHelper.getAllReactions()
             val cache = FilterRulesCache.getInstance(dbHelper)
             val preparedRules = cache.preparedRules()
             val senderPref = cache.senderPreference(address)
@@ -517,7 +518,8 @@ class SmsRepository(
                             matchedRuleName = matchedRule,
                             isRevealed = isRevealed,
                             status = status,
-                            subId = subId
+                            subId = subId,
+                            reaction = reactions[msgId]
                         )
                     )
                 }
@@ -804,6 +806,11 @@ class SmsRepository(
             Log.e(TAG, "Failed to delete message $messageId", e)
             false
         }
+    }
+
+    /** Attaches (or clears, when [emoji] is null) a local emoji reaction to a message. */
+    suspend fun setReaction(messageId: Long, emoji: String?) = withContext(Dispatchers.IO) {
+        dbHelper.setReaction(messageId, emoji)
     }
 
     suspend fun revealSpamMessage(messageId: Long, isRevealed: Boolean) = withContext(Dispatchers.IO) {
@@ -1443,8 +1450,14 @@ class SmsRepository(
 
     suspend fun getAllTabs(): List<SenderTab> = dbHelper.getAllTabs()
 
-    suspend fun createTab(name: String, addresses: Collection<String> = emptyList()): Long =
-        dbHelper.createTab(name, addresses)
+    suspend fun createTab(
+        name: String,
+        addresses: Collection<String> = emptyList(),
+        filterMask: Int = 0
+    ): Long = dbHelper.createTab(name, addresses, filterMask)
+
+    suspend fun updateTabFilterMask(tabId: Long, filterMask: Int): Boolean =
+        dbHelper.updateTabFilterMask(tabId, filterMask)
 
     suspend fun updateTabName(tabId: Long, newName: String): Boolean =
         dbHelper.updateTabName(tabId, newName)
