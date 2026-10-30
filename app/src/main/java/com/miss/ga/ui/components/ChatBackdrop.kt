@@ -56,7 +56,7 @@ fun ChatBackdropBackground(appearance: Appearance, modifier: Modifier = Modifier
 private fun rememberWallpaperImage(uri: String?): ImageBitmap? {
     if (uri.isNullOrBlank()) return null
     val context = LocalContext.current
-    val image by produceState<ImageBitmap?>(initialValue = null, uri) {
+    val image by produceState<ImageBitmap?>(initialValue = null, key1 = uri) {
         value = withContext(Dispatchers.IO) {
             runCatching {
                 decodeSampledBitmap(context, Uri.parse(uri))?.asImageBitmap()
