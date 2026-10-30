@@ -63,16 +63,20 @@ fun isThreadInTab(thread: ConversationThread, tab: SenderTab): Boolean {
     return keys.any { it in tab.senderAddresses }
 }
 
+/** Id of the "All" pseudo tab while the strip is being reordered (matches ALL_TAB_SENTINEL). */
+const val ALL_TAB_ID = -1L
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SenderTabRow(
     tabs: List<SenderTab>,
     selectedTabId: Long?,
     threads: List<ConversationThread>,
+    allTabIndex: Int = 0,
     onSelectTab: (Long?) -> Unit,
     onCreateTabClick: () -> Unit,
     onTabOptionsClick: (SenderTab) -> Unit,
-    onReorderTabs: (List<SenderTab>) -> Unit = {},
+    onReorderTabs: (List<Long>) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val lazyListState = rememberLazyListState()
@@ -81,16 +85,24 @@ fun SenderTabRow(
     val density = LocalDensity.current
     val touchSlop = LocalViewConfiguration.current.touchSlop
 
+    val allEntry = remember { SenderTab(id = ALL_TAB_ID, name = "") }
+    val entries = remember(tabs, allTabIndex) {
+        val list = tabs.toMutableList()
+        list.add(allTabIndex.coerceIn(0, list.size), allEntry)
+        list
+    }
+
     val currentTabs = remember { mutableStateListOf<SenderTab>() }
     var draggedTabId by remember { mutableStateOf<Long?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     var hasReordered by remember { mutableStateOf(false) }
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
 
-    // Sync currentTabs with tabs when not actively dragging
-    if (draggedTabId == null && (currentTabs.size != tabs.size || currentTabs.map { it.id } != tabs.map { it.id })) {
+    // Keep the strip in sync with the database: comparing whole entries (not just ids) is what
+    // makes a renamed tab show its new name without reloading the screen.
+    if (draggedTabId == null && currentTabs != entries) {
         currentTabs.clear()
-        currentTabs.addAll(tabs)
+        currentTabs.addAll(entries)
     }
 
     LazyRow(
@@ -100,60 +112,9 @@ fun SenderTabRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // "All" tab
-        item(key = "tab_all") {
-            val isSelected = selectedTabId == null
-            val containerColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
-                label = "allTabBg"
-            )
-            val contentColor by animateColorAsState(
-                targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                label = "allTabText"
-            )
-
-            Surface(
-                shape = PillShape,
-                color = containerColor,
-                contentColor = contentColor,
-                modifier = Modifier
-                    .clip(PillShape)
-                    .combinedClickable(
-                        onClick = { onSelectTab(null) }
-                    )
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.comp_all),
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    )
-                    if (threads.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Surface(
-                            shape = PillShape,
-                            color = if (isSelected) contentColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest
-                        ) {
-                            Text(
-                                text = threads.size.toString(),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = contentColor,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Custom tabs
         items(currentTabs, key = { "tab_${it.id}" }) { tab ->
-            val isSelected = selectedTabId == tab.id
+            val isAll = tab.id == ALL_TAB_ID
+            val isSelected = if (isAll) selectedTabId == null else selectedTabId == tab.id
             val isDraggingThis = draggedTabId == tab.id
             val containerColor by animateColorAsState(
                 targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -163,7 +124,7 @@ fun SenderTabRow(
                 targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 label = "tabText_${tab.id}"
             )
-            val matchingCount = threads.count { isThreadInTab(it, tab) }
+            val count = if (isAll) threads.size else threads.count { isThreadInTab(it, tab) }
 
             Surface(
                 shape = PillShape,
@@ -184,7 +145,7 @@ fun SenderTabRow(
                     .combinedClickable(
                         onClick = {
                             if (draggedTabId == null) {
-                                onSelectTab(tab.id)
+                                if (isAll) onSelectTab(null) else onSelectTab(tab.id)
                             }
                         }
                     )
@@ -202,7 +163,7 @@ fun SenderTabRow(
                                 totalDragDistance += abs(dragAmount.x)
                                 dragOffset += dragAmount.x
 
-                                // Auto scroll near edges
+                                // Auto scroll near the edges of the strip
                                 val visibleItems = lazyListState.layoutInfo.visibleItemsInfo
                                 val draggedInfo = visibleItems.find { it.key == "tab_${tab.id}" }
                                 if (draggedInfo != null) {
@@ -211,17 +172,13 @@ fun SenderTabRow(
                                     val edgeThreshold = with(density) { 48.dp.toPx() }
                                     val currentPos = draggedInfo.offset + dragOffset
                                     if (currentPos < viewportStart + edgeThreshold) {
-                                        coroutineScope.launch {
-                                            lazyListState.scrollBy(-15f)
-                                        }
+                                        coroutineScope.launch { lazyListState.scrollBy(-15f) }
                                     } else if (currentPos + draggedInfo.size > viewportEnd - edgeThreshold) {
-                                        coroutineScope.launch {
-                                            lazyListState.scrollBy(15f)
-                                        }
+                                        coroutineScope.launch { lazyListState.scrollBy(15f) }
                                     }
                                 }
 
-                                // Check swaps (one swap per drag event to allow layout to settle)
+                                // One swap per drag event so the layout can settle
                                 val draggedIndex = currentTabs.indexOfFirst { it.id == tab.id }
                                 if (draggedIndex != -1) {
                                     val items = lazyListState.layoutInfo.visibleItemsInfo
@@ -261,11 +218,11 @@ fun SenderTabRow(
                             },
                             onDragEnd = {
                                 val finalReordered = hasReordered
-                                val finalTabs = currentTabs.toList()
+                                val finalOrder = currentTabs.map { it.id }
                                 if (totalDragDistance < touchSlop && !finalReordered) {
-                                    onTabOptionsClick(tab)
+                                    if (!isAll) onTabOptionsClick(tab)
                                 } else if (finalReordered) {
-                                    onReorderTabs(finalTabs)
+                                    onReorderTabs(finalOrder)
                                 }
                                 draggedTabId = null
                                 dragOffset = 0f
@@ -278,7 +235,7 @@ fun SenderTabRow(
                                 hasReordered = false
                                 totalDragDistance = 0f
                                 currentTabs.clear()
-                                currentTabs.addAll(tabs)
+                                currentTabs.addAll(entries)
                             }
                         )
                     }
@@ -286,14 +243,14 @@ fun SenderTabRow(
                 Row(
                     modifier = Modifier.padding(
                         start = 14.dp,
-                        end = if (isSelected) 6.dp else 14.dp,
+                        end = if (isSelected && !isAll) 6.dp else 14.dp,
                         top = 5.dp,
                         bottom = 5.dp
                     ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = tab.name,
+                        text = if (isAll) stringResource(R.string.comp_all) else tab.name,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                     )
@@ -304,7 +261,7 @@ fun SenderTabRow(
                         color = if (isSelected) contentColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
                         Text(
-                            text = matchingCount.toString(),
+                            text = count.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = contentColor,
@@ -313,7 +270,7 @@ fun SenderTabRow(
                         )
                     }
 
-                    if (isSelected) {
+                    if (isSelected && !isAll) {
                         Spacer(modifier = Modifier.width(2.dp))
                         IconButton(
                             onClick = { onTabOptionsClick(tab) },

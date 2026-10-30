@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material.icons.filled.Keyboard
@@ -63,7 +64,6 @@ import com.ramesh.sms.theme.AccentColor
 import com.ramesh.sms.theme.Appearance
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.BubbleStyle
-import com.ramesh.sms.theme.SwipeAction
 import com.ramesh.sms.theme.BubbleTone
 import com.ramesh.sms.theme.ChatBackdrop
 import com.ramesh.sms.theme.ChatFontFamily
@@ -260,23 +260,13 @@ fun SettingsScreen(
                         onCheckedChange = { enabled -> update { it.copy(bubbleTail = enabled) } },
                         showDivider = true
                     )
-                    SettingsChoiceRow(
-                        title = stringResource(R.string.settings_swipe_right),
-                        subtitle = stringResource(R.string.settings_swipe_right_sub),
-                        options = SwipeAction.entries.map { swipeActionLabel(it) },
-                        selectedIndex = look.swipeStartAction.ordinal,
-                        onSelect = { index ->
-                            update { it.copy(swipeStartAction = SwipeAction.entries[index]) }
-                        }
-                    )
-                    SettingsChoiceRow(
-                        title = stringResource(R.string.settings_swipe_left),
-                        subtitle = stringResource(R.string.settings_swipe_left_sub),
-                        options = SwipeAction.entries.map { swipeActionLabel(it) },
-                        selectedIndex = look.swipeEndAction.ordinal,
-                        onSelect = { index ->
-                            update { it.copy(swipeEndAction = SwipeAction.entries[index]) }
-                        }
+                    SettingsSwitchRow(
+                        icon = Icons.Default.Delete,
+                        title = stringResource(R.string.settings_swipe_delete),
+                        subtitle = stringResource(R.string.settings_swipe_delete_sub),
+                        checked = look.swipeToDelete,
+                        onCheckedChange = { enabled -> update { it.copy(swipeToDelete = enabled) } },
+                        showDivider = true
                     )
                     SettingsColorChoiceRow(
                         title = stringResource(R.string.settings_sent_color),
@@ -684,13 +674,3 @@ private fun BubblePreviewCard(look: Appearance) {
         }
     }
 }
-
-/** Localised label for a swipe action. */
-@Composable
-private fun swipeActionLabel(action: SwipeAction): String = stringResource(
-    when (action) {
-        SwipeAction.NONE -> R.string.swipe_action_off
-        SwipeAction.MARK_READ -> R.string.swipe_action_mark_read
-        SwipeAction.DELETE -> R.string.swipe_action_delete
-    }
-)

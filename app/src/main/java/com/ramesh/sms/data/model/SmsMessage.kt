@@ -41,6 +41,8 @@ data class ConversationThread(
     val hasSpam: Boolean = false,
     val isUnreadSpam: Boolean = false,
     val lastMessageAction: FilterAction = FilterAction.NORMAL,
+    /** True when every received message in this thread is spam, so the thread holds no content. */
+    val spamOnly: Boolean = false,
     val subId: Int = SubscriptionManager.INVALID_SUBSCRIPTION_ID,
     val photoUri: String? = null,
     val contactLookupUri: String? = null

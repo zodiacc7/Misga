@@ -12,6 +12,9 @@ interface UserPreferences {
     var showSimFilter: Boolean
     var noSpamForContacts: Boolean
 
+    /** Position of the "All" tab inside the tab strip (0 = first). */
+    var allTabIndex: Int
+
     /** Ask the network for a delivery report for every outgoing message. */
     var deliveryReports: Boolean
 
@@ -78,6 +81,12 @@ class AppPreferences(
             prefs.edit().putBoolean(KEY_NO_SPAM_FOR_CONTACTS, value).apply()
         }
 
+    override var allTabIndex: Int
+        get() = prefs.getInt(KEY_ALL_TAB_INDEX, 0)
+        set(value) {
+            prefs.edit().putInt(KEY_ALL_TAB_INDEX, value).apply()
+        }
+
     override var deliveryReports: Boolean
         get() = prefs.getBoolean(KEY_DELIVERY_REPORTS, false)
         set(value) {
@@ -117,6 +126,7 @@ class AppPreferences(
         const val KEY_SHOW_TABS = "show_tabs"
         const val KEY_SHOW_SIM_FILTER = "show_sim_filter"
         const val KEY_NO_SPAM_FOR_CONTACTS = "no_spam_for_contacts"
+        const val KEY_ALL_TAB_INDEX = "all_tab_index"
         const val KEY_DELIVERY_REPORTS = "delivery_reports"
         const val KEY_SEND_DELAY_SECONDS = "send_delay_seconds"
         const val KEY_AUTO_DELETE_LIMIT = "auto_delete_limit"

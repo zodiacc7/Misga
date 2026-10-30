@@ -1,0 +1,6 @@
+• Renaming a tab now updates the tab strip instantly, no restart needed.
+• Swipe a conversation sideways to reveal a bin, then tap it to delete. An undo bar stays for 5 seconds.
+• Deleting messages now only works through selection; gestures never delete a message.
+• "Contacts only" applies to the All tab only.
+• The All tab can be dragged to any position, just like custom tabs.
+• Conversations whose messages are all spam no longer appear as empty chats.

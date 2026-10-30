@@ -95,11 +95,6 @@
     <string name="settings_preview_in">Ramesh looks like this</string>
     <string name="settings_preview_out">And this is your bubble</string>
     <string name="settings_today">Today</string>
-    <string name="settings_swipe_right">Swipe right</string>
-    <string name="settings_swipe_right_sub">Action when you drag a message to the right</string>
-    <string name="settings_swipe_left">Swipe left</string>
-    <string name="settings_swipe_left_sub">Action when you drag a message to the left</string>
-    <string name="swipe_action_off">Off</string>
-    <string name="swipe_action_mark_read">Mark as read</string>
-    <string name="swipe_action_delete">Delete</string>
+    <string name="settings_swipe_delete">Swipe to delete conversations</string>
+    <string name="settings_swipe_delete_sub">Swipe a conversation left or right to show a delete button for five seconds</string>
 </resources>

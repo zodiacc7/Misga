@@ -60,8 +60,18 @@ data class ConversationsUiState(
     val sendDelaySeconds: Int = 0,
     val autoDeleteLimit: Int = 0,
     val lockScreenPrivacy: LockScreenPrivacy = LockScreenPrivacy.FULL,
-    val appLanguage: AppLanguage = AppLanguage.SYSTEM
+    val appLanguage: AppLanguage = AppLanguage.SYSTEM,
+    /** Position of the "All" pseudo tab inside the tab strip. */
+    val allTabIndex: Int = 0,
+    /** Conversations waiting out the undo window before they are really deleted. */
+    val pendingDeleteIds: Set<Long> = emptySet()
 )
+
+/** Id used for the "All" pseudo tab while reordering the tab strip (matches ALL_TAB_ID). */
+const val ALL_TAB_SENTINEL = -1L
+
+/** How long a deleted conversation can be brought back. */
+const val UNDO_DELETE_WINDOW_MILLIS = 5_000L
 
 class ConversationsViewModel(
     application: Application,
@@ -73,6 +83,7 @@ class ConversationsViewModel(
     private val repository = SmsRepository(application, userPreferences)
     private val dbHelper = RameshDatabaseHelper.getInstance(application)
     private var searchJob: Job? = null
+    private val pendingDeletes = mutableMapOf<Long, Job>()
     private var loadJob: Job? = null
     private var defaultSmsCheckJob: Job? = null
     private var observerDebounceJob: Job? = null
@@ -91,7 +102,8 @@ class ConversationsViewModel(
             sendDelaySeconds = userPreferences.sendDelaySeconds,
             autoDeleteLimit = userPreferences.autoDeleteLimit,
             lockScreenPrivacy = userPreferences.lockScreenPrivacy,
-            appLanguage = userPreferences.appLanguage
+            appLanguage = userPreferences.appLanguage,
+            allTabIndex = userPreferences.allTabIndex
         )
     )
     val uiState: StateFlow<ConversationsUiState> = _uiState.asStateFlow()
@@ -150,7 +162,8 @@ class ConversationsViewModel(
             sendDelaySeconds = userPreferences.sendDelaySeconds,
             autoDeleteLimit = userPreferences.autoDeleteLimit,
             lockScreenPrivacy = userPreferences.lockScreenPrivacy,
-            appLanguage = userPreferences.appLanguage
+            appLanguage = userPreferences.appLanguage,
+            allTabIndex = userPreferences.allTabIndex
         )
         repository.invalidateLookupCaches()
         checkDefaultSmsStatus()
@@ -356,19 +369,30 @@ class ConversationsViewModel(
         tabs: List<SenderTab> = _uiState.value.tabs,
         selectedSimFilterSubId: Int? = _uiState.value.selectedSimFilterSubId,
         showTabs: Boolean = _uiState.value.showTabs,
-        showSimFilter: Boolean = _uiState.value.showSimFilter
+        showSimFilter: Boolean = _uiState.value.showSimFilter,
+        showContactsOnly: Boolean = _uiState.value.showContactsOnly
     ): List<ConversationThread> {
         val tab = if (showTabs && selectedTabId != null) tabs.find { it.id == selectedTabId } else null
+        // A spam-only conversation has no content left to open, so it never becomes an empty row
+        // in the inbox or in a "not spam" filter tab.
+        val spamTabSelected = tab?.spamOnly == true
+        val usable = threads.filter { it.messageCount > 0 && (spamTabSelected || !it.spamOnly) }
         val tabFiltered = if (tab != null) {
-            threads.filter { threadMatchesTab(it, tab) }
+            usable.filter { threadMatchesTab(it, tab) }
         } else {
-            threads
+            usable
+        }
+        // "Contacts only" is a scope of the All tab; a custom tab defines its own scope.
+        val contactFiltered = if (tab == null && showContactsOnly) {
+            tabFiltered.filter { it.isContact }
+        } else {
+            tabFiltered
         }
         val effectiveSubId = if (showSimFilter) selectedSimFilterSubId else null
         val simFiltered = if (effectiveSubId != null) {
-            tabFiltered.filter { it.subId == effectiveSubId }
+            contactFiltered.filter { it.subId == effectiveSubId }
         } else {
-            tabFiltered
+            contactFiltered
         }
         if (query.isBlank()) return simFiltered
         return simFiltered.filter {
@@ -434,10 +458,20 @@ class ConversationsViewModel(
     }
 
     fun toggleContactsOnly() {
-        val nextValue = !_uiState.value.showContactsOnly
+        // Only the All tab has a "contacts only" scope.
+        val current = _uiState.value
+        if (current.selectedTabId != null) return
+        val nextValue = !current.showContactsOnly
         userPreferences.showContactsOnly = nextValue
-        _uiState.value = _uiState.value.copy(
-            showContactsOnly = nextValue
+        _uiState.value = current.copy(
+            showContactsOnly = nextValue,
+            filteredThreads = filterThreads(
+                threads = current.threads,
+                query = current.searchQuery.trim(),
+                selectedTabId = current.selectedTabId,
+                tabs = current.tabs,
+                showContactsOnly = nextValue
+            )
         )
     }
 
@@ -553,12 +587,7 @@ class ConversationsViewModel(
     }
 
     fun selectAllThreads() {
-        val visibleThreads = if (_uiState.value.showContactsOnly) {
-            _uiState.value.filteredThreads.filter { it.isContact }
-        } else {
-            _uiState.value.filteredThreads
-        }
-        val allFilteredIds = visibleThreads.map { it.threadId }
+        val allFilteredIds = _uiState.value.filteredThreads.map { it.threadId }
         val allSelected = selectedThreadIds.containsAll(allFilteredIds) && allFilteredIds.isNotEmpty()
         if (allSelected) {
             selectedThreadIds.clear()
@@ -644,6 +673,7 @@ class ConversationsViewModel(
     fun selectTab(tabId: Long?) {
         val current = _uiState.value
         if (current.selectedTabId == tabId) return
+        // The contacts-only filter is remembered, but filterThreads applies it to the All tab only.
         _uiState.value = current.copy(
             selectedTabId = tabId,
             filteredThreads = filterThreads(current.threads, current.searchQuery.trim(), tabId, current.tabs)
@@ -731,16 +761,64 @@ class ConversationsViewModel(
     }
 
     fun renameTab(tabId: Long, newName: String) {
+        val trimmed = newName.trim()
+        if (trimmed.isEmpty()) return
+        val current = _uiState.value
+        // Update the in-memory list first so the tab strip shows the new name without a reload.
+        _uiState.value = current.copy(
+            tabs = current.tabs.map { if (it.id == tabId) it.copy(name = trimmed) else it }
+        )
         viewModelScope.launch {
-            repository.updateTabName(tabId, newName)
+            repository.updateTabName(tabId, trimmed)
         }
     }
 
-    fun reorderTabs(reorderedTabs: List<SenderTab>) {
+    /**
+     * Persists a new tab order. [orderedIds] may contain [ALL_TAB_SENTINEL], which moves the
+     * "All" pseudo tab; only real tabs are written to the database.
+     */
+    fun reorderTabs(orderedIds: List<Long>) {
         val current = _uiState.value
-        _uiState.value = current.copy(tabs = reorderedTabs)
+        val allIndex = orderedIds.indexOf(ALL_TAB_SENTINEL).takeIf { it >= 0 } ?: current.allTabIndex
+        val realIds = orderedIds.filter { it != ALL_TAB_SENTINEL }
+        val byId = current.tabs.associateBy { it.id }
+        val reordered = realIds.mapNotNull { byId[it] }
+        if (reordered.size != current.tabs.size) return
+        userPreferences.allTabIndex = allIndex
+        _uiState.value = current.copy(tabs = reordered, allTabIndex = allIndex)
         viewModelScope.launch {
-            repository.updateTabOrder(reorderedTabs.map { it.id })
+            repository.updateTabOrder(realIds)
+        }
+    }
+
+    /**
+     * Hides one conversation right away and deletes it after the undo window, so the user can
+     * still take the deletion back without losing messages.
+     */
+    fun requestDeleteConversation(threadId: Long) {
+        val current = _uiState.value
+        if (threadId in current.pendingDeleteIds) return
+        _uiState.value = current.copy(pendingDeleteIds = current.pendingDeleteIds + threadId)
+        pendingDeletes.remove(threadId)?.cancel()
+        pendingDeletes[threadId] = viewModelScope.launch {
+            delay(UNDO_DELETE_WINDOW_MILLIS)
+            _uiState.value = _uiState.value.copy(
+                pendingDeleteIds = _uiState.value.pendingDeleteIds - threadId
+            )
+            pendingDeletes.remove(threadId)
+            selectedThreadIds.remove(threadId)
+            if (selectedThreadIds.isEmpty()) isSelectionMode = false
+            val deleted = repository.deleteThread(threadId)
+            if (deleted) loadThreads(silent = true, force = true)
+        }
+    }
+
+    /** Cancels a queued deletion and brings the conversation back. */
+    fun undoDeleteConversation(threadId: Long) {
+        pendingDeletes.remove(threadId)?.cancel()
+        val current = _uiState.value
+        if (threadId in current.pendingDeleteIds) {
+            _uiState.value = current.copy(pendingDeleteIds = current.pendingDeleteIds - threadId)
         }
     }
 

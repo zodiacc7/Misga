@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -92,11 +91,7 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.res.stringResource
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -112,7 +107,6 @@ import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.InputBarShape
 import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.theme.SquircleCardShape
-import com.ramesh.sms.theme.SwipeAction
 import com.ramesh.sms.ui.components.ChatBackdropBackground
 import com.ramesh.sms.ui.components.ChatDateHeader
 import com.ramesh.sms.ui.components.ContactProfileDialog
@@ -643,7 +637,6 @@ fun ChatScreen(
                     onRevealToggle = onRevealToggle,
                     onMarkNotSpam = onMarkNotSpam,
                     onDelete = onDeleteMessage,
-                    onMarkRead = { viewModel.markConversationRead() },
                     onLongClick = onLongClickMessage,
                     isSelectionMode = isSelectionMode,
                     selectedMessageIds = selectedMessageIds,
@@ -952,7 +945,6 @@ private fun ChatMessageList(
     onRevealToggle: (Long, Boolean) -> Unit,
     onMarkNotSpam: (Long) -> Unit,
     onDelete: (Long) -> Unit,
-    onMarkRead: () -> Unit = {},
     onLongClick: (SmsMessage) -> Unit,
     isSelectionMode: Boolean = false,
     selectedMessageIds: Set<Long> = emptySet(),
@@ -1041,34 +1033,22 @@ private fun ChatMessageList(
                     } else {
                         null
                     }
-                    SwipeableMessage(
-                        startAction = look.swipeStartAction,
-                        endAction = look.swipeEndAction,
-                        onAction = { action ->
-                            when (action) {
-                                SwipeAction.DELETE -> onDelete(message.id)
-                                SwipeAction.MARK_READ -> onMarkRead()
-                                SwipeAction.NONE -> Unit
-                            }
-                        }
-                    ) {
-                        MessageBubble(
-                            message = message,
-                            isHighlighted = isHighlighted,
-                            simSlotNumber = simSlotNumber,
-                            useShamsi = showShamsiDate,
-                            onToggleDateFormat = onDateTapAction,
-                            onLongClick = { onLongClick(message) },
-                            isSelectionMode = isSelectionMode,
-                            isSelected = message.id in selectedMessageIds,
-                            onToggleSelect = { onTapMessage(message) },
-                            selectionResetKey = bubbleResetKey,
-                            onBubbleTouched = { onBubbleTouched(message.id) },
-                            onOutsideTap = onOutsideTap,
-                            showAvatar = showAvatarForMessage,
-                            avatar = avatarSlot
-                        )
-                    }
+                    MessageBubble(
+                        message = message,
+                        isHighlighted = isHighlighted,
+                        simSlotNumber = simSlotNumber,
+                        useShamsi = showShamsiDate,
+                        onToggleDateFormat = onDateTapAction,
+                        onLongClick = { onLongClick(message) },
+                        isSelectionMode = isSelectionMode,
+                        isSelected = message.id in selectedMessageIds,
+                        onToggleSelect = { onTapMessage(message) },
+                        selectionResetKey = bubbleResetKey,
+                        onBubbleTouched = { onBubbleTouched(message.id) },
+                        onOutsideTap = onOutsideTap,
+                        showAvatar = showAvatarForMessage,
+                        avatar = avatarSlot
+                    )
                 }
             }
         }
@@ -1090,106 +1070,6 @@ private fun ChatMessageList(
         }
     }
 }
-
-/**
- * Wraps a bubble in a horizontal swipe gesture. A short drag (64dp) is enough to fire the
- * configured action, the bubble follows the finger and always snaps back, so nothing is ever
- * dismissed by accident. Vertical drags are left to the list so scrolling stays natural.
- */
-@Composable
-private fun SwipeableMessage(
-    startAction: SwipeAction,
-    endAction: SwipeAction,
-    onAction: (SwipeAction) -> Unit,
-    content: @Composable () -> Unit
-) {
-    if (startAction == SwipeAction.NONE && endAction == SwipeAction.NONE) {
-        content()
-        return
-    }
-
-    val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
-    val maxOffsetPx = thresholdPx * 1.6f
-    var dragOffset by remember { mutableFloatStateOf(0f) }
-    var dragging by remember { mutableStateOf(false) }
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        if (dragging && dragOffset != 0f) {
-            val active = if (dragOffset > 0f) startAction else endAction
-            if (active != SwipeAction.NONE) {
-                val progress = (kotlin.math.abs(dragOffset) / thresholdPx).coerceIn(0f, 1f)
-                SwipeActionHint(active = active, fromStart = dragOffset > 0f, progress = progress)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer { translationX = dragOffset }
-                .pointerInput(startAction, endAction) {
-                    detectHorizontalDragGestures(
-                        onDragStart = {
-                            dragging = true
-                            dragOffset = 0f
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            dragOffset = (dragOffset + dragAmount).coerceIn(-maxOffsetPx, maxOffsetPx)
-                        },
-                        onDragEnd = {
-                            val fired = when {
-                                dragOffset >= thresholdPx -> startAction
-                                dragOffset <= -thresholdPx -> endAction
-                                else -> SwipeAction.NONE
-                            }
-                            dragging = false
-                            dragOffset = 0f
-                            if (fired != SwipeAction.NONE) onAction(fired)
-                        },
-                        onDragCancel = {
-                            dragging = false
-                            dragOffset = 0f
-                        }
-                    )
-                }
-        ) {
-            content()
-        }
-    }
-}
-
-@Composable
-private fun SwipeActionHint(active: SwipeAction, fromStart: Boolean, progress: Float = 1f) {
-    val isDelete = active == SwipeAction.DELETE
-    val tint = if (isDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = if (fromStart) Arrangement.Start else Arrangement.End,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 18.dp)
-    ) {
-        val alpha = 0.35f + 0.65f * progress
-        Icon(
-            imageVector = if (isDelete) Icons.Default.Delete else Icons.Default.MarkEmailRead,
-            contentDescription = null,
-            tint = tint.copy(alpha = alpha),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Text(
-            text = when (active) {
-                SwipeAction.DELETE -> stringResource(R.string.swipe_action_delete)
-                SwipeAction.MARK_READ -> stringResource(R.string.swipe_action_mark_read)
-                SwipeAction.NONE -> stringResource(R.string.swipe_action_off)
-            },
-            color = tint.copy(alpha = alpha),
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
-/** How far a message has to travel sideways before the swipe action fires. */
-private val SwipeThreshold = 64.dp
 
 private val ReactionEmojis = listOf("❤️", "👍", "😂", "😮", "😢", "🙏", "🔥", "🎉")
 

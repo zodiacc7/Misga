@@ -9,7 +9,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState as animateFloat
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +22,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +72,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -77,7 +84,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
@@ -88,6 +97,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -95,6 +107,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import com.ramesh.sms.ChatNav
@@ -120,6 +135,7 @@ import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.senderDisplayName
 import com.ramesh.sms.ui.util.contentAware
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+import com.ramesh.sms.ui.viewmodel.UNDO_DELETE_WINDOW_MILLIS
 import com.ramesh.sms.util.DefaultSmsAppHelper
 import java.util.Locale
 
@@ -175,13 +191,40 @@ fun ConversationsScreen(
     var showAddToTabDialog by remember { mutableStateOf(false) }
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val swipeToDelete = AppearanceStore.current.swipeToDelete
+    val undoScope = rememberCoroutineScope()
+
+    // Deleting waits five seconds so the undo bar stays usable; nothing is lost if the user
+    // changes their mind.
+    val requestDeleteConversation: (ConversationThread) -> Unit = { thread ->
+        viewModel.requestDeleteConversation(thread.threadId)
+        undoScope.launch {
+            val dismissJob = launch {
+                delay(UNDO_DELETE_WINDOW_MILLIS)
+                snackbarHostState.currentSnackbarData?.dismiss()
+            }
+            val result = snackbarHostState.showSnackbar(
+                message = context.getString(R.string.inbox_conversation_deleted),
+                actionLabel = context.getString(R.string.inbox_undo),
+                duration = SnackbarDuration.Indefinite
+            )
+            dismissJob.cancel()
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoDeleteConversation(thread.threadId)
+            }
+        }
+    }
 
     BackHandler(enabled = isSelectionMode) {
         viewModel.clearSelection()
     }
 
-    val currentlyVisibleThreads = remember(state.filteredThreads, state.showContactsOnly) {
-        if (state.showContactsOnly) state.filteredThreads.filter { it.isContact } else state.filteredThreads
+    // "Contacts only" is a filter of the All tab; custom tabs keep their own scope.
+    val contactsOnlyActive = state.showContactsOnly && state.selectedTabId == null
+    val currentlyVisibleThreads = remember(state.filteredThreads, contactsOnlyActive, state.pendingDeleteIds) {
+        val visible = state.filteredThreads.filter { it.threadId !in state.pendingDeleteIds }
+        if (contactsOnlyActive) visible.filter { it.isContact } else visible
     }
     val isDebuggable = remember(context) {
         (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -193,7 +236,8 @@ fun ConversationsScreen(
                 isSelectionMode = isSelectionMode,
                 selectedThreadIds = selectedThreadIds,
                 visibleThreads = currentlyVisibleThreads,
-                showContactsOnly = state.showContactsOnly,
+                showContactsOnly = contactsOnlyActive,
+                showContactsToggle = state.selectedTabId == null,
                 threads = state.threads,
                 isDebuggable = isDebuggable,
                 onClearSelection = { viewModel.clearSelection() },
@@ -212,7 +256,7 @@ fun ConversationsScreen(
                 onAddToTab = { showAddToTabDialog = true },
                 onToggleContactsOnly = {
                     viewModel.toggleContactsOnly()
-                    val msg = if (!state.showContactsOnly) {
+                    val msg = if (!contactsOnlyActive) {
                         context.getString(R.string.inbox_showing_contacts_only)
                     } else {
                         context.getString(R.string.inbox_showing_all)
@@ -265,6 +309,7 @@ fun ConversationsScreen(
                 )
             }
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -341,6 +386,7 @@ fun ConversationsScreen(
                     tabs = state.tabs,
                     selectedTabId = state.selectedTabId,
                     threads = state.threads,
+                    allTabIndex = state.allTabIndex,
                     onSelectTab = { viewModel.selectTab(it) },
                     onCreateTabClick = { tabEditorId = NEW_TAB_ID },
                     onTabOptionsClick = { tabForOptionsMenu = it },
@@ -436,8 +482,8 @@ fun ConversationsScreen(
 
             val isSearchActive = state.searchQuery.isNotBlank()
             val displayedThreads = currentlyVisibleThreads
-            val displayedMessages = remember(state.matchingMessages, state.showContactsOnly) {
-                if (state.showContactsOnly) {
+            val displayedMessages = remember(state.matchingMessages, contactsOnlyActive) {
+                if (contactsOnlyActive) {
                     state.matchingMessages.filter { !it.contactName.isNullOrBlank() }
                 } else {
                     state.matchingMessages
@@ -485,14 +531,14 @@ fun ConversationsScreen(
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = if (state.showContactsOnly) "No contact messages match \"${state.searchQuery}\"" else "No messages match \"${state.searchQuery}\"",
+                                text = if (contactsOnlyActive) "No contact messages match \"${state.searchQuery}\"" else "No messages match \"${state.searchQuery}\"",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = if (state.showContactsOnly) "Try a different keyword or toggle off the contacts filter" else "Try searching for a different keyword or contact name",
+                                text = if (contactsOnlyActive) "Try a different keyword or toggle off the contacts filter" else "Try searching for a different keyword or contact name",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline
                             )
@@ -515,32 +561,37 @@ fun ConversationsScreen(
                                 key = { "thread_${it.threadId}" },
                                 contentType = { "thread" }
                             ) { thread ->
-                                ConversationItem(
-                                    thread = thread,
-                                    selectedIds = NoSelectionIds,
-                                    isSelectionMode = false,
-                                    simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
-                                    onClick = {
-                                        openChat(
-                                            ChatNav(
+                                SwipeToDeleteContainer(
+                                    enabled = swipeToDelete,
+                                    onDelete = { requestDeleteConversation(thread) }
+                                ) {
+                                    ConversationItem(
+                                        thread = thread,
+                                        selectedIds = NoSelectionIds,
+                                        isSelectionMode = false,
+                                        simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                                        onClick = {
+                                            openChat(
+                                                ChatNav(
+                                                    threadId = thread.threadId,
+                                                    address = thread.address,
+                                                    contactName = thread.contactName
+                                                )
+                                            )
+                                        },
+                                        onLongClick = {},
+                                        onAvatarClick = {
+                                            activeProfileDialogInfo = ProfileDialogData(
                                                 threadId = thread.threadId,
                                                 address = thread.address,
-                                                contactName = thread.contactName
+                                                contactName = thread.contactName,
+                                                photoUri = thread.photoUri,
+                                                contactLookupUri = thread.contactLookupUri,
+                                                isContact = thread.isContact
                                             )
-                                        )
-                                    },
-                                    onLongClick = {},
-                                    onAvatarClick = {
-                                        activeProfileDialogInfo = ProfileDialogData(
-                                            threadId = thread.threadId,
-                                            address = thread.address,
-                                            contactName = thread.contactName,
-                                            photoUri = thread.photoUri,
-                                            contactLookupUri = thread.contactLookupUri,
-                                            isContact = thread.isContact
-                                        )
-                                    }
-                                )
+                                        }
+                                    )
+                                }
                                 HorizontalDivider(
                                     modifier = Modifier.padding(start = AvatarDividerInset, end = 16.dp),
                                     thickness = 0.5.dp,
@@ -612,7 +663,7 @@ fun ConversationsScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = if (selectedTab != null) Icons.Default.FolderOpen
-                                    else if (state.showContactsOnly) Icons.Default.Contacts
+                                    else if (contactsOnlyActive) Icons.Default.Contacts
                                     else Icons.Default.Shield,
                                     contentDescription = stringResource(R.string.inbox_no_messages),
                                     tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
@@ -623,7 +674,7 @@ fun ConversationsScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = if (selectedTab != null) "No conversations in \"${selectedTab.name}\""
-                            else if (state.showContactsOnly) "No contacts found"
+                            else if (contactsOnlyActive) "No contacts found"
                             else "No SMS messages found",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
@@ -638,7 +689,7 @@ fun ConversationsScreen(
                                     "None of the senders in this tab have messages in your inbox"
                                 }
                             }
-                            else if (state.showContactsOnly) "Conversations with saved contacts will appear here"
+                            else if (contactsOnlyActive) "Conversations with saved contacts will appear here"
                             else "Incoming SMS messages will appear here",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.outline
@@ -838,6 +889,7 @@ private fun ConversationsTopBar(
     selectedThreadIds: Set<Long>,
     visibleThreads: List<ConversationThread>,
     showContactsOnly: Boolean,
+    showContactsToggle: Boolean = true,
     threads: List<ConversationThread>,
     isDebuggable: Boolean,
     onClearSelection: () -> Unit,
@@ -946,17 +998,19 @@ private fun ConversationsTopBar(
                     label = "contactsToggleTint"
                 )
 
-                Surface(
-                    shape = CircleShape,
-                    color = contactsButtonBg,
-                    modifier = Modifier.padding(end = 6.dp)
-                ) {
-                    IconButton(onClick = onToggleContactsOnly) {
-                        Icon(
-                            imageVector = Icons.Default.Contacts,
-                            contentDescription = if (showContactsOnly) "Showing contacts only (Tap to show all)" else "Filter by contacts only",
-                            tint = contactsIconTint
-                        )
+                if (showContactsToggle) {
+                    Surface(
+                        shape = CircleShape,
+                        color = contactsButtonBg,
+                        modifier = Modifier.padding(end = 6.dp)
+                    ) {
+                        IconButton(onClick = onToggleContactsOnly) {
+                            Icon(
+                                imageVector = Icons.Default.Contacts,
+                                contentDescription = if (showContactsOnly) "Showing contacts only (Tap to show all)" else "Filter by contacts only",
+                                tint = contactsIconTint
+                            )
+                        }
                     }
                 }
 
@@ -1525,3 +1579,95 @@ private data class ProfileDialogData(
     val contactLookupUri: String? = null,
     val isContact: Boolean = !contactName.isNullOrBlank()
 )
+
+/**
+ * Reveals a delete button when a conversation row is dragged sideways. The row itself never
+ * deletes anything: the user has to tap the bin, which keeps the gesture reversible.
+ */
+@Composable
+private fun SwipeToDeleteContainer(
+    enabled: Boolean,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    val revealPx = with(LocalDensity.current) { 84.dp.toPx() }
+    var offset by remember { mutableFloatStateOf(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    val animatedOffset by animateFloat(
+        targetValue = offset,
+        animationSpec = tween(durationMillis = if (isDragging) 0 else 160),
+        label = "swipeReveal"
+    )
+    val revealed = animatedOffset != 0f
+
+    Box(modifier.fillMaxWidth()) {
+        if (revealed) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 12.dp),
+                contentAlignment = if (animatedOffset > 0) Alignment.CenterStart else Alignment.CenterEnd
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.size(52.dp)
+                ) {
+                    IconButton(
+                        onClick = {
+                            offset = 0f
+                            onDelete()
+                        },
+                        modifier = Modifier.size(52.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.inbox_delete_conversation),
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = animatedOffset }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    detectHorizontalDragGestures(
+                        onDragStart = { isDragging = true },
+                        onDragEnd = {
+                            isDragging = false
+                            offset = when {
+                                abs(offset) < revealPx / 2f -> 0f
+                                offset > 0f -> revealPx
+                                else -> -revealPx
+                            }
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            offset = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            offset = (offset + dragAmount).coerceIn(-revealPx, revealPx)
+                        }
+                    )
+                }
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                content()
+            }
+        }
+    }
+}

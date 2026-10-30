@@ -32,8 +32,7 @@ object AppearanceStore {
     private const val KEY_ENTER_TO_SEND = "enter_to_send"
     private const val KEY_CHAR_COUNTER = "character_counter"
     private const val KEY_OTP_ACTION = "otp_copy_action"
-    private const val KEY_SWIPE_START = "swipe_start_action"
-    private const val KEY_SWIPE_END = "swipe_end_action"
+    private const val KEY_SWIPE_DELETE = "swipe_to_delete"
 
     private var prefs: SharedPreferences? = null
 
@@ -90,8 +89,7 @@ object AppearanceStore {
             enterToSend = shared.getBoolean(KEY_ENTER_TO_SEND, defaults.enterToSend),
             showCharacterCounter = shared.getBoolean(KEY_CHAR_COUNTER, defaults.showCharacterCounter),
             otpCopyAction = shared.getBoolean(KEY_OTP_ACTION, defaults.otpCopyAction),
-            swipeStartAction = shared.readEnum(KEY_SWIPE_START, defaults.swipeStartAction),
-            swipeEndAction = shared.readEnum(KEY_SWIPE_END, defaults.swipeEndAction)
+            swipeToDelete = shared.getBoolean(KEY_SWIPE_DELETE, defaults.swipeToDelete)
         )
     }
 
@@ -113,8 +111,7 @@ object AppearanceStore {
             .putBoolean(KEY_ENTER_TO_SEND, appearance.enterToSend)
             .putBoolean(KEY_CHAR_COUNTER, appearance.showCharacterCounter)
             .putBoolean(KEY_OTP_ACTION, appearance.otpCopyAction)
-            .putString(KEY_SWIPE_START, appearance.swipeStartAction.name)
-            .putString(KEY_SWIPE_END, appearance.swipeEndAction.name)
+            .putBoolean(KEY_SWIPE_DELETE, appearance.swipeToDelete)
             .apply()
     }
 

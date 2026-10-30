@@ -95,11 +95,6 @@
     <string name="settings_preview_in">رامش این‌طور دیده می‌شود</string>
     <string name="settings_preview_out">و این حباب شماست</string>
     <string name="settings_today">امروز</string>
-    <string name="settings_swipe_right">سوایپ به راست</string>
-    <string name="settings_swipe_right_sub">عملی که با کشیدن پیام به سمت راست انجام می‌شود</string>
-    <string name="settings_swipe_left">سوایپ به چپ</string>
-    <string name="settings_swipe_left_sub">عملی که با کشیدن پیام به سمت چپ انجام می‌شود</string>
-    <string name="swipe_action_off">خاموش</string>
-    <string name="swipe_action_mark_read">علامت‌گذاری به‌عنوان خوانده‌شده</string>
-    <string name="swipe_action_delete">حذف</string>
+    <string name="settings_swipe_delete">حذف گفتگو با کشیدن</string>
+    <string name="settings_swipe_delete_sub">با کشیدن چپ یا راست یک گفتگو، دکمهٔ حذف برای پنج ثانیه نمایش داده می‌شود</string>
 </resources>
