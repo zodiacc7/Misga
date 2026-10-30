@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">رامش</string>
+    <string name="app_name">Ramesh</string>
     <string name="app_tagline">Your inbox, finally quiet</string>
     <string name="sms_inbox">SMS inbox</string>
     <string name="sms_permission_needed">Inbox needs SMS permission</string>
@@ -13,4 +13,5 @@
     <string name="toast_code_copied">Code copied: %1$s</string>
     <string name="notification_action_delete">Delete</string>
     <string name="notification_user_me">Me</string>
+    <string name="notification_new_message">New message</string>
 </resources>

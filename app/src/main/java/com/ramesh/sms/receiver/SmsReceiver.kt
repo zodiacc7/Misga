@@ -132,6 +132,7 @@ class SmsReceiver : BroadcastReceiver() {
             )
         }
         val pendingMetaWrites = mutableListOf<SpamMetaWrite>()
+        val threadsToPrune = mutableSetOf<Long>()
 
         for (entry in messagesBySender) {
             val parts = entry.parts
@@ -207,6 +208,9 @@ class SmsReceiver : BroadcastReceiver() {
             if (threadId <= 0) {
                 threadId = smsRepository.getOrCreateThreadId(sender)
             }
+            if (threadId > 0) {
+                threadsToPrune.add(threadId)
+            }
 
             pendingMetaWrites.add(
                 SpamMetaWrite(
@@ -236,6 +240,9 @@ class SmsReceiver : BroadcastReceiver() {
         if (pendingMetaWrites.isNotEmpty()) {
             dbHelper.saveMessagesFilterMeta(pendingMetaWrites)
         }
+
+        // Optional per-conversation cap: drop the oldest messages once a thread is full.
+        threadsToPrune.forEach { id -> smsRepository.pruneThread(id) }
     }
 
     private suspend fun resolveInboxMessageId(

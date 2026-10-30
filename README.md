@@ -21,9 +21,8 @@ verification code you cannot afford to miss. Ramesh ships with ready-made regex 
 that silence the noise, while an allowlist makes sure OTPs and banking messages always
 get through.
 
-> Ramesh is a fork of [Misga](https://github.com/mirarr-app/Misga) (GPL-3.0), published as its own
-> app under the `com.ramesh.sms` package id. It installs next to Misga as a separate application
-> with its own messages, filters and settings.
+> Ramesh is an independent app published under the `com.ramesh.sms` package id as a free
+> (GPL-3.0) open-source project.
 
 ### Highlights
 
@@ -45,6 +44,17 @@ get through.
   media decoding all happen on-device.
 - **RTL-aware.** Persian and Arabic message bodies render with the correct direction and
   punctuation even in the English UI, and dates can be shown in the Shamsi calendar.
+- **Reactions.** Long-press any message and drop an emoji reaction on it — stored locally and
+  shown as a chip under the bubble.
+- **Delivery reports, send delay and auto-cleanup.** Confirm delivery per message, hold an
+  outgoing SMS for 3/5/10 seconds with a cancel button, and optionally cap a conversation at
+  500–5,000 messages so the oldest ones disappear by themselves.
+- **Lock-screen privacy.** Choose whether the lock screen shows the sender and the text, only
+  the sender, or nothing at all.
+- **Combinable tab filters.** Every custom tab can show spam only, non-spam only, contacts only
+  or non-contacts only — and any combination of them.
+- **Bilingual, follows the system.** English and Persian UI with a System / English / Persian
+  switch in Settings.
 
 ### Appearance & settings
 
@@ -58,7 +68,10 @@ inbox** sheet. Everything applies live.
 | **Chat background** | Six flat tones, or any photo from your gallery (downsampled and scrimmed so bubbles stay readable). |
 | **Conversation** | Contact photos next to received messages, Today/Yesterday dividers, Enter-to-send, SMS character counter, tap a timestamp to switch Gregorian/Shamsi. |
 | **Inbox** | Conversation tabs, SIM filter, contact photos, contacts-only mode. |
-| **Notifications** | Delete action, and the copy-code button for one-time codes. |
+| **Notifications** | Delete action, the copy-code button for one-time codes, delivery reports, and what the lock screen may show. |
+| **Sending** | Send delay (off / 3 / 5 / 10 seconds) with a countdown you can cancel. |
+| **Storage** | Auto-delete old messages per conversation (off by default, 500–5,000). |
+| **Language** | System default, English or Persian. |
 | **Filtering** | “No spam for contacts”, plus a shortcut to Filter Studio. |
 | **Reset** | Restore the default look without touching messages or filters. |
 
@@ -102,15 +115,15 @@ Then add the pattern in Filter Studio as a blocklist rule.
 3. Grant SMS, contacts and notification permissions.
 4. Accept the prompt to become the default SMS app.
 
-Android 8.0 (API 26) or newer is required. MMS is not supported. Installation is side-by-side:
-Ramesh does not replace or upgrade an existing Misga install.
+Android 8.0 (API 26) or newer is required. MMS is not supported. The current release is
+**1.0.0**.
 
 **Development builds.** Every push to `main` publishes an unsigned debug APK as the
 [`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) pre-release. It uses
 the package id `com.ramesh.sms.dev`, so it installs next to the regular app.
 
 > Ramesh is distributed through GitHub Releases; there is no F-Droid listing for
-> `com.ramesh.sms` yet. The upstream Misga listing (`com.miss.ga`) is a different app.
+> `com.ramesh.sms` yet.
 
 ### Build from source
 
@@ -143,9 +156,8 @@ Ramesh owns its identifiers end to end: package `com.ramesh.sms`, preferences
 `ramesh_filters.db`, and notification channels `ramesh_sms_alert_channel` /
 `ramesh_sms_silent_channel`.
 
-Because the package id is new, Ramesh does **not** read Misga's data: it installs as a separate
-app, starts with a fresh rule set, and both apps can coexist during the switch-over. Uninstalling
-Misga is safe once you have exported your filters from Filter Studio.
+Every byte Ramesh writes lives under its own identifiers, and filter rules can be exported and
+imported as JSON from Filter Studio at any time.
 
 ### Privacy
 
@@ -179,9 +191,7 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 از دست بروند. رامش از ابتدا فیلترهای آمادهٔ regex دارد تا این سر و صدا را خفه کند، و یک
 لیست سفید تضمین می‌کند کدهای تأیید و پیام‌های بانکی همیشه برسند.
 
-> رامش ادامهٔ پروژهٔ [میسگا](https://github.com/mirarr-app/Misga) با پروانهٔ GPL-3.0 است و با
-> شناسهٔ بستهٔ مستقل `com.ramesh.sms` منتشر می‌شود؛ کنار میسگا نصب می‌شود و پیام‌ها، فیلترها و
-> تنظیمات جداگانهٔ خودش را دارد.
+> رامش برنامه‌ای مستقل با شناسهٔ بستهٔ `com.ramesh.sms` و پروانهٔ آزاد GPL-3.0 است.
 
 ### ویژگی‌ها
 
@@ -201,6 +211,16 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
   کاملاً روی گوشی انجام می‌شود.
 - **پشتیبانی از راست‌به‌چپ.** متن فارسی و عربی با جهت و نشانه‌گذاری درست نمایش داده می‌شود و
   تاریخ‌ها را می‌توان شمسی دید.
+- **واکنش ایموجی.** با نگه‌داشتن هر پیام می‌توانید به آن واکنش بدهید؛ واکنش‌ها روی گوشی ذخیره و
+  زیر حباب نمایش داده می‌شوند.
+- **گزارش تحویل، تأخیر ارسال و پاک‌سازی خودکار.** تأیید تحویل هر پیام، نگه‌داشتن پیام برای
+  ۳/۵/۱۰ ثانیه با دکمهٔ لغو، و محدودکردن هر گفتگو به ۵۰۰ تا ۵٬۰۰۰ پیام تا پیام‌های قدیمی خودکار
+  حذف شوند.
+- **حریم خصوصی صفحهٔ قفل.** انتخاب اینکه روی صفحهٔ قفل فرستنده و متن دیده شود، فقط فرستنده، یا
+  هیچ‌چیز.
+- **فیلترهای ترکیبی تب‌ها.** هر تب می‌تواند فقط اسپم، فقط غیراسپم، فقط مخاطب یا فقط غیرمخاطب را
+  نشان دهد — و هر ترکیبی از آن‌ها.
+- **دوزبانه و پیرو سیستم.** رابط انگلیسی و فارسی با انتخاب دستی «سیستم / انگلیسی / فارسی».
 
 ### ظاهر و تنظیمات
 
@@ -214,7 +234,10 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 | **پس‌زمینهٔ گفتگو** | شش رنگ ساده یا هر عکسی از گالری (با کاهش اندازه و لایهٔ محو برای خوانایی حباب‌ها). |
 | **گفتگو** | عکس مخاطب کنار پیام‌های دریافتی، جداکنندهٔ امروز/دیروز، ارسال با Enter، شمارندهٔ کاراکتر و لمس تاریخ برای تغییر تقویم شمسی/میلادی. |
 | **صندوق ورودی** | تب‌های گفتگو، فیلتر سیم‌کارت، عکس مخاطب و حالت «فقط مخاطبین». |
-| **اعلان‌ها** | دکمهٔ حذف و دکمهٔ کپی کد برای کدهای یک‌بارمصرف. |
+| **اعلان‌ها** | دکمهٔ حذف، دکمهٔ کپی کد، گزارش تحویل و اینکه صفحهٔ قفل چه چیزی را نشان دهد. |
+| **ارسال** | تأخیر در ارسال (خاموش / ۳ / ۵ / ۱۰ ثانیه) با شمارش معکوس و امکان لغو. |
+| **ذخیره‌سازی** | حذف خودکار پیام‌های قدیمی در هر گفتگو (پیش‌فرض خاموش، ۵۰۰ تا ۵٬۰۰۰). |
+| **زبان** | پیش‌فرض سیستم، انگلیسی یا فارسی. |
 | **فیلتر** | «بدون اسپم برای مخاطبین» و میان‌بر Filter Studio. |
 | **بازنشانی** | برگشت به ظاهر پیش‌فرض، بدون دست‌زدن به پیام‌ها و فیلترها. |
 
@@ -258,15 +281,15 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 ۳. دسترسی پیامک، مخاطبین و اعلان را بدهید.
 ۴. درخواست «برنامهٔ پیامک پیش‌فرض» را بپذیرید.
 
-اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند. نصب
-کنار میسگا انجام می‌شود و رامش جایگزین یا به‌روزرسانی نصب فعلی نیست.
+اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند.
+نسخهٔ فعلی **۱٫۰٫۰** است.
 
 **نسخه‌های آزمایشی.** با هر push روی `main` یک APK دیباگِ امضانشده در پیش‌انتشار
 [`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) منتشر می‌شود. شناسهٔ
 بستهٔ آن `com.ramesh.sms.dev` است، پس کنار نسخهٔ معمولی نصب می‌شود.
 
 > رامش از طریق GitHub Releases منتشر می‌شود و هنوز صفحه‌ای در F-Droid برای بستهٔ
-> `com.ramesh.sms` وجود ندارد. صفحهٔ فعلی F-Droid مربوط به میسگا (`com.miss.ga`) برنامهٔ دیگری است.
+> `com.ramesh.sms` وجود ندارد.
 
 ### ساخت از روی سورس
 
@@ -298,9 +321,8 @@ app/src/main/java/com/ramesh/sms/
 `ramesh_appearance` و `ramesh_test_lab`، پایگاه‌دادهٔ `ramesh_filters.db` و کانال‌های اعلان
 `ramesh_sms_alert_channel` و `ramesh_sms_silent_channel`.
 
-چون شناسهٔ بسته تازه است، رامش داده‌های میسگا را نمی‌خواند: به‌صورت برنامهٔ جداگانه نصب می‌شود،
-با مجموعهٔ فیلتر تازه شروع می‌کند و در دوران گذار می‌تواند کنار میسگا بماند. بعد از اینکه
-فیلترها را از Filter Studio خروجی گرفتید، حذف میسگا بی‌خطر است.
+همهٔ داده‌ها با شناسه‌های خود رامش ذخیره می‌شوند و فیلترها هر زمان از Filter Studio به‌صورت
+JSON قابل خروجی و ورودی هستند.
 
 ### حریم خصوصی
 

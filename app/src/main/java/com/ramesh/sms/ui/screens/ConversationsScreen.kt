@@ -105,7 +105,6 @@ import androidx.compose.ui.semantics.Role
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.PillShape
-import com.ramesh.sms.theme.Vazirmatn
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
@@ -920,8 +919,8 @@ private fun ConversationsTopBar(
             title = {
                 Column {
                     Text(
-                        text = "رامش",
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Vazirmatn),
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )

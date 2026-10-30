@@ -1,3 +1,0 @@
-• Upgraded runtime toolchain to Java 21
-• Enhanced build reproducibility for F-Droid
-• Stability and performance improvements

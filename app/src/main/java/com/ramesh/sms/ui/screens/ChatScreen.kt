@@ -462,6 +462,17 @@ fun ChatScreen(
                 Column(
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                 ) {
+                    if (state.pendingSendSecondsLeft > 0) {
+                        PendingSendBar(
+                            secondsLeft = state.pendingSendSecondsLeft,
+                            onCancel = {
+                                val restored = viewModel.cancelPendingSend()
+                                if (!restored.isNullOrBlank()) {
+                                    inputText = restored
+                                }
+                            }
+                        )
+                    }
                     if (look.showCharacterCounter) {
                         SmsSegmentCounter(text = inputText)
                     }
@@ -1009,3 +1020,31 @@ private fun ChatMessageList(
     }
 }
 
+/** Countdown bar shown while a send-delay is running; Cancel puts the text back in the composer. */
+@Composable
+private fun PendingSendBar(secondsLeft: Int, onCancel: () -> Unit) {
+    Surface(
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Sending in ${secondsLeft}s",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onCancel) {
+                Text("Cancel", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}

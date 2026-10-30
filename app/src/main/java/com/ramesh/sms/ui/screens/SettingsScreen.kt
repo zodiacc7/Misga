@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -53,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.theme.AccentColor
 import com.ramesh.sms.theme.Appearance
 import com.ramesh.sms.theme.AppearanceStore
@@ -77,6 +79,21 @@ import com.ramesh.sms.ui.components.SettingsRowDivider
 import com.ramesh.sms.ui.components.SettingsSectionHeader
 import com.ramesh.sms.ui.components.SettingsSwitchRow
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+
+private val SendDelayOptions: List<Pair<Int, String>> = listOf(
+    0 to "Off",
+    3 to "3 seconds",
+    5 to "5 seconds",
+    10 to "10 seconds"
+)
+
+private val AutoDeleteOptions: List<Pair<Int, String>> = listOf(
+    0 to "Off",
+    500 to "500 messages",
+    1_000 to "1,000 messages",
+    2_000 to "2,000 messages",
+    5_000 to "5,000 messages"
+)
 
 private val ToneDotColors: List<Pair<String, androidx.compose.ui.graphics.Color?>> =
     BubbleTone.values().map { tone ->
@@ -349,7 +366,19 @@ fun SettingsScreen(
                         title = "Tap date to switch calendar",
                         subtitle = "Toggle standard and Shamsi dates from a message timestamp",
                         checked = inboxState.enableDateTapShamsiToggle,
-                        onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) }
+                        onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
+                        showDivider = true
+                    )
+                    SettingsChoiceRow(
+                        title = "Send delay",
+                        subtitle = "Hold each message for a moment so you can cancel a wrong send",
+                        options = SendDelayOptions.map { it.second },
+                        selectedIndex = SendDelayOptions.indexOfFirst {
+                            it.first == inboxState.sendDelaySeconds
+                        }.coerceAtLeast(0),
+                        onSelect = { index ->
+                            inboxViewModel.setSendDelaySeconds(SendDelayOptions[index].first)
+                        }
                     )
                 }
             }
@@ -413,7 +442,29 @@ fun SettingsScreen(
                         title = "Copy verification codes",
                         subtitle = "One-tap copy button when an SMS contains a login code",
                         checked = look.otpCopyAction,
-                        onCheckedChange = { enabled -> update { it.copy(otpCopyAction = enabled) } }
+                        onCheckedChange = { enabled -> update { it.copy(otpCopyAction = enabled) } },
+                        showDivider = true
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Default.CheckCircle,
+                        title = "Delivery reports",
+                        subtitle = "Ask the network to confirm that each sent message was delivered",
+                        checked = inboxState.deliveryReports,
+                        onCheckedChange = { enabled -> inboxViewModel.setDeliveryReportsEnabled(enabled) },
+                        showDivider = true
+                    )
+                    SettingsChoiceRow(
+                        title = "Show on lock screen",
+                        subtitle = "Message text always stays inside the app once unlocked",
+                        options = listOf(
+                            LockScreenPrivacy.FULL.label,
+                            LockScreenPrivacy.SENDER_ONLY.label,
+                            LockScreenPrivacy.HIDDEN.label
+                        ),
+                        selectedIndex = inboxState.lockScreenPrivacy.ordinal,
+                        onSelect = { index ->
+                            inboxViewModel.setLockScreenPrivacy(LockScreenPrivacy.entries[index])
+                        }
                     )
                 }
             }
@@ -436,6 +487,28 @@ fun SettingsScreen(
                         subtitle = "Manage allowlist and blocklist rules",
                         icon = Icons.Default.FilterAlt,
                         onClick = onOpenFilterStudio
+                    )
+                }
+            }
+
+            item(key = "storage-header") {
+                SettingsSectionHeader(
+                    title = "Storage",
+                    subtitle = "Keep conversations from growing forever"
+                )
+            }
+            item(key = "storage-group") {
+                SettingsGroup {
+                    SettingsChoiceRow(
+                        title = "Auto-delete old messages",
+                        subtitle = "Per conversation. Older messages are removed from the phone once the limit is passed; off by default.",
+                        options = AutoDeleteOptions.map { it.second },
+                        selectedIndex = AutoDeleteOptions.indexOfFirst {
+                            it.first == inboxState.autoDeleteLimit
+                        }.coerceAtLeast(0),
+                        onSelect = { index ->
+                            inboxViewModel.setAutoDeleteLimit(AutoDeleteOptions[index].first)
+                        }
                     )
                 }
             }
