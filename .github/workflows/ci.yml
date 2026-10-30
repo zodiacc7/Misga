@@ -48,8 +48,9 @@ jobs:
         if: failure()
         run: |
           if [ -f build.log ]; then
-            grep -n -E "^e: |error:|FAILURE:|What went wrong|Execution failed|Caused by:|> Task .*FAILED|Could not (resolve|find|open)" build.log \
-              | tail -n 25 \
-              | sed -e 's/%/%25/g' -e 's/\r$//' \
+            # every Kotlin/Gradle error line, oldest first
+            grep -E "^e: |^FAILURE: |What went wrong|Execution failed for task|Could not (resolve|find|open)|Unresolved reference" build.log \
+              | head -n 50 \
+              | sed -e 's/%/%25/g' -e 's/$//' \
               | awk '{ printf "::error::%s\n", $0 }'
           fi

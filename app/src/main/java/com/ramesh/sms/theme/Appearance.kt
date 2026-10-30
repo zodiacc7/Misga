@@ -269,6 +269,6 @@ fun BubbleTone.bubbleContent(outgoing: Boolean): Color {
 
 @Composable
 fun ChatBackdrop.backdropColorOrNull(): Color? {
-    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    return if (dark) dark else light
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    return if (isDark) dark else light
 }
