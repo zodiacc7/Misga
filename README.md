@@ -21,8 +21,9 @@ verification code you cannot afford to miss. Ramesh ships with ready-made regex 
 that silence the noise, while an allowlist makes sure OTPs and banking messages always
 get through.
 
-> Ramesh is a fork of [Misga](https://github.com/mirarr-app/Misga) (GPL-3.0) and keeps the
-> `com.miss.ga` package id so existing installs keep their messages, filters and settings.
+> Ramesh is a fork of [Misga](https://github.com/mirarr-app/Misga) (GPL-3.0), published as its own
+> app under the `com.ramesh.sms` package id. It installs next to Misga as a separate application
+> with its own messages, filters and settings.
 
 ### Highlights
 
@@ -101,10 +102,11 @@ Then add the pattern in Filter Studio as a blocklist rule.
 3. Grant SMS, contacts and notification permissions.
 4. Accept the prompt to become the default SMS app.
 
-Android 8.0 (API 26) or newer is required. MMS is not supported.
+Android 8.0 (API 26) or newer is required. MMS is not supported. Installation is side-by-side:
+Ramesh does not replace or upgrade an existing Misga install.
 
-> The F-Droid listing for `com.miss.ga` belongs to the upstream Misga project and may not
-> include the features described here. Ramesh itself is distributed through GitHub Releases.
+> Ramesh is distributed through GitHub Releases; there is no F-Droid listing for
+> `com.ramesh.sms` yet. The upstream Misga listing (`com.miss.ga`) is a different app.
 
 ### Build from source
 
@@ -122,7 +124,7 @@ Release signing is read from the environment:
 ### Project structure
 
 ```
-app/src/main/java/com/miss/ga/
+app/src/main/java/com/ramesh/sms/
 ├── data/        SQLite rules DB, SMS repository, SIM telephony, preferences
 ├── engine/      filter engine, incoming-SMS policy, OTP detector, notifications
 ├── receiver/    SMS/MMS receivers, notification actions, sent/delivery reports
@@ -130,8 +132,16 @@ app/src/main/java/com/miss/ga/
 └── ui/          inbox, chat, compose, Filter Studio, settings, components
 ```
 
-Internal storage identifiers (`com.miss.ga`, `misga_*` preferences, `misga_filters.db`,
-notification channels) are intentionally unchanged so updating from Misga keeps your data.
+### Package and stored data
+
+Ramesh owns its identifiers end to end: package `com.ramesh.sms`, preferences
+`ramesh_preferences` / `ramesh_appearance` / `ramesh_test_lab`, the rules database
+`ramesh_filters.db`, and notification channels `ramesh_sms_alert_channel` /
+`ramesh_sms_silent_channel`.
+
+Because the package id is new, Ramesh does **not** read Misga's data: it installs as a separate
+app, starts with a fresh rule set, and both apps can coexist during the switch-over. Uninstalling
+Misga is safe once you have exported your filters from Filter Studio.
 
 ### Privacy
 
@@ -165,8 +175,9 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 از دست بروند. رامش از ابتدا فیلترهای آمادهٔ regex دارد تا این سر و صدا را خفه کند، و یک
 لیست سفید تضمین می‌کند کدهای تأیید و پیام‌های بانکی همیشه برسند.
 
-> رامش ادامهٔ پروژهٔ [میسگا](https://github.com/mirarr-app/Misga) با پروانهٔ GPL-3.0 است و
-> شناسهٔ بستهٔ `com.miss.ga` را نگه داشته تا با به‌روزرسانی، پیام‌ها و فیلترهای فعلی از دست نروند.
+> رامش ادامهٔ پروژهٔ [میسگا](https://github.com/mirarr-app/Misga) با پروانهٔ GPL-3.0 است و با
+> شناسهٔ بستهٔ مستقل `com.ramesh.sms` منتشر می‌شود؛ کنار میسگا نصب می‌شود و پیام‌ها، فیلترها و
+> تنظیمات جداگانهٔ خودش را دارد.
 
 ### ویژگی‌ها
 
@@ -243,10 +254,11 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 ۳. دسترسی پیامک، مخاطبین و اعلان را بدهید.
 ۴. درخواست «برنامهٔ پیامک پیش‌فرض» را بپذیرید.
 
-اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند.
+اندروید ۸٫۰ (API ۲۶) یا جدیدتر لازم است. پیام‌های چندرسانه‌ای (MMS) پشتیبانی نمی‌شوند. نصب
+کنار میسگا انجام می‌شود و رامش جایگزین یا به‌روزرسانی نصب فعلی نیست.
 
-> صفحهٔ F-Droid برای بستهٔ `com.miss.ga` متعلق به پروژهٔ بالادستی میسگا است و ممکن است
-> ویژگی‌های این نسخه را نداشته باشد. خود رامش از طریق GitHub Releases منتشر می‌شود.
+> رامش از طریق GitHub Releases منتشر می‌شود و هنوز صفحه‌ای در F-Droid برای بستهٔ
+> `com.ramesh.sms` وجود ندارد. صفحهٔ فعلی F-Droid مربوط به میسگا (`com.miss.ga`) برنامهٔ دیگری است.
 
 ### ساخت از روی سورس
 
@@ -264,7 +276,7 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 ### ساختار پروژه
 
 ```
-app/src/main/java/com/miss/ga/
+app/src/main/java/com/ramesh/sms/
 ├── data/        پایگاه‌دادهٔ قوانین، مخزن پیام‌ها، سیم‌کارت، تنظیمات
 ├── engine/      موتور فیلتر، سیاست پیام ورودی، تشخیص OTP، اعلان‌ها
 ├── receiver/    گیرنده‌های پیامک/MMS، اکشن‌های اعلان، گزارش ارسال و تحویل
@@ -272,9 +284,15 @@ app/src/main/java/com/miss/ga/
 └── ui/          صندوق ورودی، گفتگو، نوشتن پیام، Filter Studio، تنظیمات، کامپوننت‌ها
 ```
 
-شناسه‌های داخلی ذخیره‌سازی (`com.miss.ga`، تنظیمات `misga_*`، پایگاه‌دادهٔ
-`misga_filters.db` و کانال‌های اعلان) عمداً تغییر نکرده‌اند تا به‌روزرسانی از میسگا داده‌های
-شما را حفظ کند.
+### بسته و داده‌های ذخیره‌شده
+
+همهٔ شناسه‌ها مخصوص رامش است: بستهٔ `com.ramesh.sms`، تنظیمات `ramesh_preferences`،
+`ramesh_appearance` و `ramesh_test_lab`، پایگاه‌دادهٔ `ramesh_filters.db` و کانال‌های اعلان
+`ramesh_sms_alert_channel` و `ramesh_sms_silent_channel`.
+
+چون شناسهٔ بسته تازه است، رامش داده‌های میسگا را نمی‌خواند: به‌صورت برنامهٔ جداگانه نصب می‌شود،
+با مجموعهٔ فیلتر تازه شروع می‌کند و در دوران گذار می‌تواند کنار میسگا بماند. بعد از اینکه
+فیلترها را از Filter Studio خروجی گرفتید، حذف میسگا بی‌خطر است.
 
 ### حریم خصوصی
 
