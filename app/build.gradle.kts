@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -7,7 +9,7 @@ plugins {
 // Signing material can come from the environment (CI secrets) or from the checked-in
 // keystore/keystore.properties fallback, so release builds are signed out of the box.
 val keystorePropertiesFile = rootProject.file("keystore/keystore.properties")
-val keystoreProperties = java.util.Properties().apply {
+val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
         keystorePropertiesFile.inputStream().use { load(it) }
     }
