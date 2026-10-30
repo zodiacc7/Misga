@@ -54,6 +54,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.app.Activity
+import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.theme.AccentColor
 import com.ramesh.sms.theme.Appearance
@@ -487,6 +489,27 @@ fun SettingsScreen(
                         subtitle = "Manage allowlist and blocklist rules",
                         icon = Icons.Default.FilterAlt,
                         onClick = onOpenFilterStudio
+                    )
+                }
+            }
+
+            item(key = "language-header") {
+                SettingsSectionHeader(
+                    title = "Language",
+                    subtitle = "System default follows your device language"
+                )
+            }
+            item(key = "language-group") {
+                SettingsGroup {
+                    SettingsChoiceRow(
+                        title = "App language",
+                        subtitle = "English or Persian, independent of the system setting",
+                        options = AppLanguage.entries.map { it.label },
+                        selectedIndex = inboxState.appLanguage.ordinal,
+                        onSelect = { index ->
+                            inboxViewModel.setAppLanguage(AppLanguage.entries[index])
+                            (context as? Activity)?.recreate()
+                        }
                     )
                 }
             }

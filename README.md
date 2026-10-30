@@ -122,6 +122,10 @@ Android 8.0 (API 26) or newer is required. MMS is not supported. The current rel
 [`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) pre-release. It uses
 the package id `com.ramesh.sms.dev`, so it installs next to the regular app.
 
+**Signed releases.** Pushing a tag that matches `versionName` (for example `1.0.0`) runs the
+release workflow, which builds, signs and publishes `ramesh-<version>-universal.apk` together with
+its SHA-256 checksum.
+
 > Ramesh is distributed through GitHub Releases; there is no F-Droid listing for
 > `com.ramesh.sms` yet.
 
@@ -135,8 +139,9 @@ Requirements: **JDK 21** and the **Android SDK (API 36)**.
 ./gradlew assembleRelease    # needs the signing environment variables below
 ```
 
-Release signing is read from the environment:
-`SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
+Release builds are signed with `keystore/ramesh-release.p12` (see [keystore/README.md](keystore/README.md)).
+The environment variables `SIGNING_STORE_FILE`, `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS`,
+`SIGNING_KEY_PASSWORD` and `SIGNING_STORE_TYPE` override the checked-in key when set.
 
 ### Project structure
 
@@ -288,6 +293,9 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 [`debug-latest`](https://github.com/zodiacc7/ramesh/releases/tag/debug-latest) منتشر می‌شود. شناسهٔ
 بستهٔ آن `com.ramesh.sms.dev` است، پس کنار نسخهٔ معمولی نصب می‌شود.
 
+**نسخه‌های امضاشده.** با زدن تگی هم‌نام با `versionName` (مثلاً `1.0.0`) گردش‌کار انتشار اجرا
+می‌شود و فایل امضاشدهٔ `ramesh-<version>-universal.apk` همراه با چک‌سام SHA-256 منتشر می‌شود.
+
 > رامش از طریق GitHub Releases منتشر می‌شود و هنوز صفحه‌ای در F-Droid برای بستهٔ
 > `com.ramesh.sms` وجود ندارد.
 
@@ -301,8 +309,10 @@ Licensed under the **GNU GPL v3** — see [LICENSE](LICENSE).
 ./gradlew assembleRelease    # نیازمند متغیرهای امضای زیر
 ```
 
-امضای نسخهٔ انتشار از محیط خوانده می‌شود:
-`SIGNING_STORE_FILE`، `SIGNING_STORE_PASSWORD`، `SIGNING_KEY_ALIAS`، `SIGNING_KEY_PASSWORD`.
+نسخهٔ انتشار با کلید `keystore/ramesh-release.p12` امضا می‌شود (جزئیات در
+[keystore/README.md](keystore/README.md)). متغیرهای محیطی `SIGNING_STORE_FILE`،
+`SIGNING_STORE_PASSWORD`، `SIGNING_KEY_ALIAS`، `SIGNING_KEY_PASSWORD` و `SIGNING_STORE_TYPE`
+در صورت وجود، جای کلید داخل مخزن را می‌گیرند.
 
 ### ساختار پروژه
 
