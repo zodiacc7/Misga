@@ -168,7 +168,7 @@ fun SettingsScreen(
             item(key = "theme-header") {
                 SettingsSectionHeader(
                     title = "Theme",
-                    subtitle = "Pick a mode and an accent colour"
+                    subtitle = "Pick a mode and an accent color"
                 )
             }
             item(key = "theme-group") {
@@ -186,7 +186,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(top = 12.dp, bottom = 14.dp)) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Text(
-                                text = "Accent colour",
+                                text = "Accent color",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -203,7 +203,7 @@ fun SettingsScreen(
                         )
                         if (look.accent == AccentColor.SYSTEM) {
                             Text(
-                                text = "Follows your wallpaper colours on Android 12+",
+                                text = "Follows your wallpaper colors on Android 12+",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
@@ -216,7 +216,7 @@ fun SettingsScreen(
             item(key = "bubbles-header") {
                 SettingsSectionHeader(
                     title = "Bubbles",
-                    subtitle = "Textra-style bubbles, colours and message text"
+                    subtitle = "Textra-style bubbles, colors and message text"
                 )
             }
             item(key = "bubbles-group") {
@@ -239,7 +239,7 @@ fun SettingsScreen(
                         showDivider = true
                     )
                     SettingsColorChoiceRow(
-                        title = "Sent bubble colour",
+                        title = "Sent bubble color",
                         options = ToneDotColors,
                         selectedIndex = look.sentTone.ordinal,
                         onSelect = { index ->
@@ -247,7 +247,7 @@ fun SettingsScreen(
                         }
                     )
                     SettingsColorChoiceRow(
-                        title = "Received bubble colour",
+                        title = "Received bubble color",
                         options = ToneDotColors,
                         selectedIndex = look.receivedTone.ordinal,
                         onSelect = { index ->

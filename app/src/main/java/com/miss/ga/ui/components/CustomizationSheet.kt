@@ -145,7 +145,7 @@ fun CustomizationSheet(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Accent colour, bubble style, chat wallpaper, fonts and more",
+                            text = "Accent color, bubble style, chat wallpaper, fonts and more",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
