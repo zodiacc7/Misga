@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MarkEmailRead
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -68,11 +69,14 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -104,6 +108,7 @@ import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.InputBarShape
 import com.ramesh.sms.theme.PillShape
 import com.ramesh.sms.theme.SquircleCardShape
+import com.ramesh.sms.theme.SwipeAction
 import com.ramesh.sms.ui.components.ChatBackdropBackground
 import com.ramesh.sms.ui.components.ChatDateHeader
 import com.ramesh.sms.ui.components.ContactProfileDialog
@@ -634,6 +639,7 @@ fun ChatScreen(
                     onRevealToggle = onRevealToggle,
                     onMarkNotSpam = onMarkNotSpam,
                     onDelete = onDeleteMessage,
+                    onMarkRead = { viewModel.markConversationRead() },
                     onLongClick = onLongClickMessage,
                     isSelectionMode = isSelectionMode,
                     selectedMessageIds = selectedMessageIds,
@@ -929,6 +935,7 @@ private fun ChatMessageList(
     onRevealToggle: (Long, Boolean) -> Unit,
     onMarkNotSpam: (Long) -> Unit,
     onDelete: (Long) -> Unit,
+    onMarkRead: () -> Unit = {},
     onLongClick: (SmsMessage) -> Unit,
     isSelectionMode: Boolean = false,
     selectedMessageIds: Set<Long> = emptySet(),
@@ -1017,22 +1024,34 @@ private fun ChatMessageList(
                     } else {
                         null
                     }
-                    MessageBubble(
-                        message = message,
-                        isHighlighted = isHighlighted,
-                        simSlotNumber = simSlotNumber,
-                        useShamsi = showShamsiDate,
-                        onToggleDateFormat = onDateTapAction,
-                        onLongClick = { onLongClick(message) },
-                        isSelectionMode = isSelectionMode,
-                        isSelected = message.id in selectedMessageIds,
-                        onToggleSelect = { onTapMessage(message) },
-                        selectionResetKey = bubbleResetKey,
-                        onBubbleTouched = { onBubbleTouched(message.id) },
-                        onOutsideTap = onOutsideTap,
-                        showAvatar = showAvatarForMessage,
-                        avatar = avatarSlot
-                    )
+                    SwipeableMessage(
+                        startAction = look.swipeStartAction,
+                        endAction = look.swipeEndAction,
+                        onAction = { action ->
+                            when (action) {
+                                SwipeAction.DELETE -> onDelete(message.id)
+                                SwipeAction.MARK_READ -> onMarkRead()
+                                SwipeAction.NONE -> Unit
+                            }
+                        }
+                    ) {
+                        MessageBubble(
+                            message = message,
+                            isHighlighted = isHighlighted,
+                            simSlotNumber = simSlotNumber,
+                            useShamsi = showShamsiDate,
+                            onToggleDateFormat = onDateTapAction,
+                            onLongClick = { onLongClick(message) },
+                            isSelectionMode = isSelectionMode,
+                            isSelected = message.id in selectedMessageIds,
+                            onToggleSelect = { onTapMessage(message) },
+                            selectionResetKey = bubbleResetKey,
+                            onBubbleTouched = { onBubbleTouched(message.id) },
+                            onOutsideTap = onOutsideTap,
+                            showAvatar = showAvatarForMessage,
+                            avatar = avatarSlot
+                        )
+                    }
                 }
             }
         }
@@ -1052,6 +1071,76 @@ private fun ChatMessageList(
                 }
             }
         }
+    }
+}
+
+/**
+ * Wraps a bubble in a horizontal swipe gesture. The row always springs back into place and
+ * simply reports the configured [SwipeAction], so nothing is ever dismissed by accident.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SwipeableMessage(
+    startAction: SwipeAction,
+    endAction: SwipeAction,
+    onAction: (SwipeAction) -> Unit,
+    content: @Composable () -> Unit
+) {
+    if (startAction == SwipeAction.NONE && endAction == SwipeAction.NONE) {
+        content()
+        return
+    }
+
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            when (value) {
+                SwipeToDismissBoxValue.StartToEnd -> if (startAction != SwipeAction.NONE) onAction(startAction)
+                SwipeToDismissBoxValue.EndToStart -> if (endAction != SwipeAction.NONE) onAction(endAction)
+                else -> Unit
+            }
+            // Never actually dismiss the message: perform the action and snap back.
+            false
+        }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        enableDismissFromStartToEnd = startAction != SwipeAction.NONE,
+        enableDismissFromEndToStart = endAction != SwipeAction.NONE,
+        backgroundContent = {
+            val active = when (dismissState.dismissDirection) {
+                SwipeToDismissBoxValue.StartToEnd -> startAction
+                SwipeToDismissBoxValue.EndToStart -> endAction
+                else -> SwipeAction.NONE
+            }
+            if (active != SwipeAction.NONE) {
+                SwipeActionHint(active = active, fromStart = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+            }
+        }
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SwipeActionHint(active: SwipeAction, fromStart: Boolean) {
+    val isDelete = active == SwipeAction.DELETE
+    val tint = if (isDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = if (fromStart) Arrangement.Start else Arrangement.End,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp)
+    ) {
+        Icon(
+            imageVector = if (isDelete) Icons.Default.Delete else Icons.Default.MarkEmailRead,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(22.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(text = active.label, color = tint, fontWeight = FontWeight.Bold)
     }
 }
 

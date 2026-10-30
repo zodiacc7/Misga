@@ -470,6 +470,15 @@ class ChatViewModel(
         }
     }
 
+    /** Clears the unread badge of this conversation; used by the swipe-to-mark-read action. */
+    fun markConversationRead() {
+        val threadId = _uiState.value.threadId
+        if (threadId <= 0L) return
+        viewModelScope.launch {
+            repository.markThreadRead(threadId)
+        }
+    }
+
     fun enterSelectionMode(messageId: Long) {
         selectedMessageIds.clear()
         selectedMessageIds.add(messageId)

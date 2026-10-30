@@ -29,7 +29,11 @@ data class Appearance(
     val showInboxAvatars: Boolean = true,
     val enterToSend: Boolean = false,
     val showCharacterCounter: Boolean = true,
-    val otpCopyAction: Boolean = true
+    val otpCopyAction: Boolean = true,
+    /** Action triggered by dragging a message from the start (left) edge to the right. */
+    val swipeStartAction: SwipeAction = SwipeAction.MARK_READ,
+    /** Action triggered by dragging a message from the end (right) edge to the left. */
+    val swipeEndAction: SwipeAction = SwipeAction.DELETE
 )
 
 enum class ThemeMode(val label: String) {
@@ -44,6 +48,13 @@ enum class BubbleStyle(val label: String, val cornerDp: Float, val tailDp: Float
     ROUNDED("Rounded", 20f, 0f),
     PILL("Pill", 24f, 0f),
     COMPACT("Compact", 10f, 7f)
+}
+
+/** What a horizontal swipe on a message does. */
+enum class SwipeAction(val label: String) {
+    NONE("Off"),
+    MARK_READ("Mark as read"),
+    DELETE("Delete")
 }
 
 enum class ChatFontSize(val label: String, val scale: Float) {
