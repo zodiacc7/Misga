@@ -105,7 +105,6 @@ import androidx.compose.ui.semantics.Role
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.PillShape
-import com.ramesh.sms.theme.Vazirmatn
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
@@ -118,6 +117,7 @@ import com.ramesh.sms.ui.components.RenameTabDialog
 import com.ramesh.sms.ui.components.SenderTabRow
 import com.ramesh.sms.ui.components.SimBadge
 import com.ramesh.sms.ui.components.SimFilterRow
+import com.ramesh.sms.ui.components.TabFilterDialog
 import com.ramesh.sms.ui.components.TabOptionsMenuSheet
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.senderDisplayName
@@ -173,6 +173,7 @@ fun ConversationsScreen(
     var tabToDelete by remember { mutableStateOf<SenderTab?>(null) }
     var tabToManageSenders by remember { mutableStateOf<SenderTab?>(null) }
     var tabForOptionsMenu by remember { mutableStateOf<SenderTab?>(null) }
+    var tabToEditFilters by remember { mutableStateOf<SenderTab?>(null) }
     var showAddToTabDialog by remember { mutableStateOf(false) }
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
@@ -722,6 +723,15 @@ fun ConversationsScreen(
     }
 
     tabForOptionsMenu?.let { tab ->
+        tabToEditFilters?.let { filterTab ->
+            val liveTab = state.tabs.find { it.id == filterTab.id } ?: filterTab
+            TabFilterDialog(
+                tab = liveTab,
+                onToggle = { mask, enabled -> viewModel.setTabFilterFlag(liveTab.id, mask, enabled) },
+                onDismiss = { tabToEditFilters = null }
+            )
+        }
+
         TabOptionsMenuSheet(
             tab = tab,
             onDismiss = { tabForOptionsMenu = null },
@@ -731,6 +741,10 @@ fun ConversationsScreen(
             },
             onRename = {
                 tabToRename = tab
+                tabForOptionsMenu = null
+            },
+            onEditFilters = {
+                tabToEditFilters = tab
                 tabForOptionsMenu = null
             },
             onDelete = {
@@ -920,8 +934,8 @@ private fun ConversationsTopBar(
             title = {
                 Column {
                     Text(
-                        text = "رامش",
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = Vazirmatn),
+                        text = stringResource(R.string.app_name),
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )

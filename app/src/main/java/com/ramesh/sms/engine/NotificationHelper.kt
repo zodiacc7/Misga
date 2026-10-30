@@ -16,6 +16,7 @@ import com.ramesh.sms.MainActivity
 import com.ramesh.sms.R
 import com.ramesh.sms.data.model.FilterAction
 import com.ramesh.sms.data.util.AppPreferences
+import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.data.util.UserPreferences
 import com.ramesh.sms.receiver.NotificationActionReceiver
 import com.ramesh.sms.receiver.NotificationActions
@@ -170,6 +171,8 @@ class NotificationHelper private constructor(
             builder.setSubText(simInfo.badgeLabel)
         }
 
+        applyLockScreenPrivacy(builder, displayName, channelId, contentPendingIntent)
+
         // Like Textra: a one-tap "Copy 123456" action when the SMS is a login code.
         if (AppearanceStore.isOtpCopyEnabled(context)) {
             OtpDetector.findCode(body)?.let { code ->
@@ -183,6 +186,61 @@ class NotificationHelper private constructor(
         } catch (e: SecurityException) {
             Log.w(TAG, "POST_NOTIFICATIONS permission denied", e)
         }
+    }
+
+    /**
+     * Keeps the text off the lock screen when the user asked for it: Android shows the
+     * [NotificationCompat.Builder.setPublicVersion] variant while the device is locked and
+     * swaps in the full notification after unlock.
+     */
+    private fun applyLockScreenPrivacy(
+        builder: NotificationCompat.Builder,
+        displayName: String,
+        channelId: String,
+        contentPendingIntent: PendingIntent
+    ) {
+        when (userPreferences.lockScreenPrivacy) {
+            LockScreenPrivacy.FULL -> builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+            LockScreenPrivacy.SENDER_ONLY -> {
+                builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                builder.setPublicVersion(
+                    buildPublicVersion(
+                        body = displayName,
+                        channelId = channelId,
+                        contentPendingIntent = contentPendingIntent
+                    )
+                )
+            }
+
+            LockScreenPrivacy.HIDDEN -> {
+                builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                builder.setPublicVersion(
+                    buildPublicVersion(
+                        body = context.getString(R.string.notification_new_message),
+                        channelId = channelId,
+                        contentPendingIntent = contentPendingIntent
+                    )
+                )
+            }
+        }
+    }
+
+    private fun buildPublicVersion(
+        body: String,
+        channelId: String,
+        contentPendingIntent: PendingIntent
+    ): android.app.Notification {
+        return NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(android.R.drawable.sym_action_chat)
+            .setContentTitle(context.getString(R.string.app_name))
+            .setContentText(body)
+            .setContentIntent(contentPendingIntent)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .build()
     }
 
     private fun getUnreadMessagesForThread(threadId: Long): List<Pair<String, Long>> {

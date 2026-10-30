@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import com.ramesh.sms.data.util.AppPreferences
 import com.ramesh.sms.engine.NotificationHelper
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.RameshTheme
+import com.ramesh.sms.ui.util.ProvideAppLanguage
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -46,7 +48,11 @@ class MainActivity : ComponentActivity() {
 
         requestRequiredPermissions()
 
+        // Language is applied for the whole process; Settings recreates the activity on change.
+        val appLanguage = AppPreferences(this).appLanguage
+
         setContent {
+            ProvideAppLanguage(appLanguage) {
             RameshTheme {
                 // Forced dark/black themes need light system-bar icons to stay readable.
                 val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -67,6 +73,7 @@ class MainActivity : ComponentActivity() {
                         onComposeNavHandled = { pendingComposeNav = null }
                     )
                 }
+            }
             }
         }
     }

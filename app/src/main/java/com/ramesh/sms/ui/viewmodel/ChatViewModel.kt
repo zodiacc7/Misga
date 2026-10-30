@@ -57,7 +57,10 @@ data class ChatUiState(
     val availableSims: List<SimInfo> = emptyList(),
     val selectedSim: SimInfo? = null,
     val showShamsiDate: Boolean = false,
-    val enableDateTapShamsiToggle: Boolean = true
+    val enableDateTapShamsiToggle: Boolean = true,
+    /** Countdown for the configurable "send delay"; 0 when no message is queued. */
+    val pendingSendSecondsLeft: Int = 0,
+    val pendingSendText: String? = null
 )
 
 class ChatViewModel(
@@ -361,8 +364,56 @@ class ChatViewModel(
         return activeSims.find { it.subscriptionId == defaultSubId } ?: activeSims.first()
     }
 
+    private var pendingSendJob: Job? = null
+
+    /**
+     * Queues an outgoing message. When the user configured a send delay, a visible countdown
+     * runs first and [cancelPendingSend] aborts it; otherwise the SMS is dispatched at once.
+     */
     fun sendMessage(text: String, onComplete: (SendSmsResult) -> Unit = {}) {
         if (text.isBlank()) return
+        if (pendingSendJob?.isActive == true) return
+
+        val delaySeconds = userPreferences.sendDelaySeconds
+        if (delaySeconds <= 0) {
+            dispatchMessage(text, onComplete)
+            return
+        }
+
+        pendingSendJob = viewModelScope.launch {
+            try {
+                for (remaining in delaySeconds downTo 1) {
+                    _uiState.value = _uiState.value.copy(
+                        pendingSendText = text,
+                        pendingSendSecondsLeft = remaining
+                    )
+                    delay(1_000L)
+                }
+                _uiState.value = _uiState.value.copy(
+                    pendingSendText = null,
+                    pendingSendSecondsLeft = 0
+                )
+                dispatchMessage(text, onComplete)
+            } catch (cancelled: CancellationException) {
+                _uiState.value = _uiState.value.copy(
+                    pendingSendText = null,
+                    pendingSendSecondsLeft = 0
+                )
+                throw cancelled
+            }
+        }
+    }
+
+    /** Aborts a queued send before the delay elapsed. */
+    fun cancelPendingSend(): String? {
+        val queued = _uiState.value.pendingSendText
+        pendingSendJob?.cancel()
+        pendingSendJob = null
+        _uiState.value = _uiState.value.copy(pendingSendText = null, pendingSendSecondsLeft = 0)
+        return queued
+    }
+
+    private fun dispatchMessage(text: String, onComplete: (SendSmsResult) -> Unit) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isSending = true)
             val subIdToSend = _uiState.value.selectedSim?.subscriptionId
@@ -381,6 +432,19 @@ class ChatViewModel(
             // Update local state in-place for instant UI responsiveness
             val updated = _uiState.value.messages.map {
                 if (it.id == messageId) it.copy(isRevealed = isRevealed) else it
+            }
+            _uiState.value = _uiState.value.copy(messages = updated)
+        }
+    }
+
+    /** Toggles an emoji reaction: picking the current emoji again removes it. */
+    fun toggleReaction(messageId: Long, emoji: String) {
+        viewModelScope.launch {
+            val current = _uiState.value.messages.firstOrNull { it.id == messageId }?.reaction
+            val next = if (current == emoji) null else emoji
+            repository.setReaction(messageId, next)
+            val updated = _uiState.value.messages.map {
+                if (it.id == messageId) it.copy(reaction = next) else it
             }
             _uiState.value = _uiState.value.copy(messages = updated)
         }

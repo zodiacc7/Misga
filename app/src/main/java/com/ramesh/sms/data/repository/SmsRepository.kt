@@ -429,6 +429,7 @@ class SmsRepository(
             )
 
             val spamMeta = dbHelper.getSpamMetaMapForThread(address)
+            val reactions = dbHelper.getAllReactions()
             val cache = FilterRulesCache.getInstance(dbHelper)
             val preparedRules = cache.preparedRules()
             val senderPref = cache.senderPreference(address)
@@ -517,7 +518,8 @@ class SmsRepository(
                             matchedRuleName = matchedRule,
                             isRevealed = isRevealed,
                             status = status,
-                            subId = subId
+                            subId = subId,
+                            reaction = reactions[msgId]
                         )
                     )
                 }
@@ -625,13 +627,17 @@ class SmsRepository(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         }
-        val deliveryIntents = parts.map {
-            PendingIntent.getBroadcast(
-                context,
-                uniqueRequestCode(),
-                newIntent(SmsSentReceiver.ACTION_SMS_DELIVERED),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+        val deliveryIntents: List<PendingIntent>? = if (userPreferences.deliveryReports) {
+            parts.map {
+                PendingIntent.getBroadcast(
+                    context,
+                    uniqueRequestCode(),
+                    newIntent(SmsSentReceiver.ACTION_SMS_DELIVERED),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+        } else {
+            null
         }
 
         try {
@@ -641,10 +647,10 @@ class SmsRepository(
                     null,
                     parts,
                     ArrayList(sentIntents),
-                    ArrayList(deliveryIntents)
+                    deliveryIntents?.let { ArrayList(it) }
                 )
             } else {
-                smsManager.sendTextMessage(address, null, body, sentIntents[0], deliveryIntents[0])
+                smsManager.sendTextMessage(address, null, body, sentIntents[0], deliveryIntents?.get(0))
             }
         } catch (e: Exception) {
             SmsSendTracker.cancel(token)
@@ -654,6 +660,10 @@ class SmsRepository(
 
         // Wait for radio-level acknowledgement; carriers normally ack within seconds.
         val confirmed = runCatching { withTimeoutOrNull(SEND_ACK_TIMEOUT_MS) { sentAck.await() } }.getOrNull() == true
+
+        if (confirmed && messageId > 0) {
+            threadIdForMessage(messageId)?.let { pruneThread(it) }
+        }
 
         SendSmsResult(sent = confirmed, storedInProvider = storedInProvider)
     }
@@ -713,6 +723,75 @@ class SmsRepository(
         }
     }
 
+    private fun threadIdForMessage(messageId: Long): Long? {
+        return try {
+            context.contentResolver.query(
+                ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, messageId),
+                arrayOf(Telephony.Sms.THREAD_ID),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                val idx = cursor.getColumnIndex(Telephony.Sms.THREAD_ID)
+                if (idx >= 0 && cursor.moveToFirst()) cursor.getLong(idx) else null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not resolve thread for message $messageId", e)
+            null
+        }
+    }
+
+    /**
+     * Enforces the optional per-conversation message cap by removing the oldest messages
+     * of [threadId] once the conversation grows past [UserPreferences.autoDeleteLimit].
+     * Returns the number of removed messages.
+     */
+    suspend fun pruneThread(threadId: Long): Int = withContext(Dispatchers.IO) {
+        val limit = userPreferences.autoDeleteLimit
+        if (limit <= 0 || threadId <= 0L) return@withContext 0
+
+        val staleIds = mutableListOf<Long>()
+        try {
+            context.contentResolver.query(
+                Telephony.Sms.CONTENT_URI,
+                arrayOf(android.provider.BaseColumns._ID),
+                "${Telephony.Sms.THREAD_ID} = ?",
+                arrayOf(threadId.toString()),
+                "${Telephony.Sms.DATE} DESC"
+            )?.use { cursor ->
+                val idIdx = cursor.getColumnIndexOrThrow(android.provider.BaseColumns._ID)
+                var position = 0
+                while (cursor.moveToNext()) {
+                    if (position >= limit) staleIds.add(cursor.getLong(idIdx))
+                    position++
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not scan conversation $threadId for trimming", e)
+            return@withContext 0
+        }
+
+        if (staleIds.isEmpty()) return@withContext 0
+
+        var removed = 0
+        staleIds.chunked(200).forEach { chunk ->
+            val placeholders = chunk.joinToString(",") { "?" }
+            try {
+                removed += context.contentResolver.delete(
+                    Telephony.Sms.CONTENT_URI,
+                    "${android.provider.BaseColumns._ID} IN ($placeholders)",
+                    chunk.map { it.toString() }.toTypedArray()
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not trim ${chunk.size} messages of conversation $threadId", e)
+            }
+        }
+        if (removed > 0) {
+            dbHelper.deleteSpamMetaForMessageIds(staleIds)
+        }
+        removed
+    }
+
     suspend fun deleteMessage(messageId: Long): Boolean = withContext(Dispatchers.IO) {
         try {
             val uri = ContentUris.withAppendedId(Telephony.Sms.CONTENT_URI, messageId)
@@ -727,6 +806,11 @@ class SmsRepository(
             Log.e(TAG, "Failed to delete message $messageId", e)
             false
         }
+    }
+
+    /** Attaches (or clears, when [emoji] is null) a local emoji reaction to a message. */
+    suspend fun setReaction(messageId: Long, emoji: String?) = withContext(Dispatchers.IO) {
+        dbHelper.setReaction(messageId, emoji)
     }
 
     suspend fun revealSpamMessage(messageId: Long, isRevealed: Boolean) = withContext(Dispatchers.IO) {
@@ -1366,8 +1450,14 @@ class SmsRepository(
 
     suspend fun getAllTabs(): List<SenderTab> = dbHelper.getAllTabs()
 
-    suspend fun createTab(name: String, addresses: Collection<String> = emptyList()): Long =
-        dbHelper.createTab(name, addresses)
+    suspend fun createTab(
+        name: String,
+        addresses: Collection<String> = emptyList(),
+        filterMask: Int = 0
+    ): Long = dbHelper.createTab(name, addresses, filterMask)
+
+    suspend fun updateTabFilterMask(tabId: Long, filterMask: Int): Boolean =
+        dbHelper.updateTabFilterMask(tabId, filterMask)
 
     suspend fun updateTabName(tabId: Long, newName: String): Boolean =
         dbHelper.updateTabName(tabId, newName)

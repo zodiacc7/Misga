@@ -1,30 +1,54 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
 }
 
+// Signing material can come from the environment (CI secrets) or from the checked-in
+// keystore/keystore.properties fallback, so release builds are signed out of the box.
+val keystorePropertiesFile = rootProject.file("keystore/keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+val releaseStorePath: String? = System.getenv("SIGNING_STORE_FILE")?.takeIf { it.isNotBlank() }
+    ?: keystoreProperties.getProperty("storeFile")?.takeIf { it.isNotBlank() }?.let {
+        rootProject.file(it).absolutePath
+    }
+val releaseStorePassword: String? = System.getenv("SIGNING_STORE_PASSWORD")?.takeIf { it.isNotBlank() }
+    ?: keystoreProperties.getProperty("storePassword")
+val releaseKeyAlias: String? = System.getenv("SIGNING_KEY_ALIAS")?.takeIf { it.isNotBlank() }
+    ?: keystoreProperties.getProperty("keyAlias")
+val releaseKeyPassword: String? = System.getenv("SIGNING_KEY_PASSWORD")?.takeIf { it.isNotBlank() }
+    ?: keystoreProperties.getProperty("keyPassword")
+val releaseStoreType: String = System.getenv("SIGNING_STORE_TYPE")
+    ?: keystoreProperties.getProperty("storeType")
+    ?: "PKCS12"
+
 android {
     namespace = "com.ramesh.sms"
     compileSdk = 36
-
-    val releaseStoreFile = System.getenv("SIGNING_STORE_FILE")
 
     defaultConfig {
         applicationId = "com.ramesh.sms"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "1.4.0"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     signingConfigs {
-        if (!releaseStoreFile.isNullOrBlank()) {
+        if (!releaseStorePath.isNullOrBlank()) {
             create("release") {
-                storeFile = file(releaseStoreFile)
-                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
-                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
-                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+                storeFile = file(releaseStorePath)
+                storeType = releaseStoreType
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
             }
         }
     }
@@ -37,7 +61,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            if (!releaseStoreFile.isNullOrBlank()) {
+            if (!releaseStorePath.isNullOrBlank()) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }

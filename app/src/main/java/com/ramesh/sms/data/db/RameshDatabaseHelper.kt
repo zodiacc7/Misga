@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
 import android.telephony.SubscriptionManager
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.FilterAction
@@ -107,6 +108,7 @@ class RameshDatabaseHelper private constructor(context: Context) :
 
         createCachedThreadsTable(db)
         createSenderTabsTables(db)
+        createMessageReactionsTable(db)
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_spam_meta_address ON spam_message_meta(address)")
         db.execSQL(
             "CREATE INDEX IF NOT EXISTS idx_filter_rules_sender_target ON filter_rules(sender_target)"
@@ -156,6 +158,10 @@ class RameshDatabaseHelper private constructor(context: Context) :
         if (oldVersion < 5) {
             try { db.execSQL("ALTER TABLE sender_preferences ADD COLUMN preferred_sub_id INTEGER NOT NULL DEFAULT -1") } catch (e: Exception) {}
             try { db.execSQL("ALTER TABLE cached_threads ADD COLUMN sub_id INTEGER NOT NULL DEFAULT -1") } catch (e: Exception) {}
+        }
+        if (oldVersion < 6) {
+            try { createMessageReactionsTable(db) } catch (e: Exception) {}
+            try { db.execSQL("ALTER TABLE sender_tabs ADD COLUMN filter_mask INTEGER NOT NULL DEFAULT 0") } catch (e: Exception) {}
         }
     }
 
@@ -495,6 +501,54 @@ class RameshDatabaseHelper private constructor(context: Context) :
         _spamMetaChanged.value = now
     }
 
+    suspend fun getAllReactions(): Map<Long, String> = withContext(Dispatchers.IO) {
+        val reactions = HashMap<Long, String>()
+        try {
+            readableDatabase.query(
+                "message_reactions",
+                arrayOf("message_id", "emoji"),
+                null,
+                null,
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    reactions[cursor.getLong(0)] = cursor.getString(1)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("RameshDatabaseHelper", "Could not read message reactions", e)
+        }
+        reactions
+    }
+
+    suspend fun setReaction(messageId: Long, emoji: String?) = withContext(Dispatchers.IO) {
+        try {
+            if (emoji.isNullOrBlank()) {
+                writableDatabase.delete(
+                    "message_reactions",
+                    "message_id = ?",
+                    arrayOf(messageId.toString())
+                )
+            } else {
+                val cv = ContentValues().apply {
+                    put("message_id", messageId)
+                    put("emoji", emoji)
+                    put("created_at", System.currentTimeMillis())
+                }
+                writableDatabase.insertWithOnConflict(
+                    "message_reactions",
+                    null,
+                    cv,
+                    SQLiteDatabase.CONFLICT_REPLACE
+                )
+            }
+        } catch (e: Exception) {
+            Log.w("RameshDatabaseHelper", "Could not store reaction for message $messageId", e)
+        }
+    }
+
     suspend fun setMessageRevealed(messageId: Long, isRevealed: Boolean) = withContext(Dispatchers.IO) {
         val cv = ContentValues().apply {
             put("is_revealed", if (isRevealed) 1 else 0)
@@ -769,7 +823,7 @@ class RameshDatabaseHelper private constructor(context: Context) :
         try {
             db.query(
                 "sender_tabs",
-                arrayOf("id", "name", "sort_order", "created_at"),
+                arrayOf("id", "name", "sort_order", "created_at", "filter_mask"),
                 null, null, null, null,
                 "sort_order ASC, id ASC"
             ).use { cursor ->
@@ -777,18 +831,21 @@ class RameshDatabaseHelper private constructor(context: Context) :
                 val nameIdx = cursor.getColumnIndexOrThrow("name")
                 val sortIdx = cursor.getColumnIndexOrThrow("sort_order")
                 val createdIdx = cursor.getColumnIndexOrThrow("created_at")
+                val maskIdx = cursor.getColumnIndex("filter_mask")
                 while (cursor.moveToNext()) {
                     val id = cursor.getLong(idIdx)
                     val name = cursor.getString(nameIdx)
                     val sortOrder = cursor.getInt(sortIdx)
                     val createdAt = cursor.getLong(createdIdx)
+                    val mask = if (maskIdx >= 0 && !cursor.isNull(maskIdx)) cursor.getInt(maskIdx) else 0
                     tabs.add(
                         SenderTab(
                             id = id,
                             name = name,
                             sortOrder = sortOrder,
                             createdAt = createdAt,
-                            senderAddresses = membersMap[id] ?: emptySet()
+                            senderAddresses = membersMap[id] ?: emptySet(),
+                            filterMask = mask
                         )
                     )
                 }
@@ -799,7 +856,11 @@ class RameshDatabaseHelper private constructor(context: Context) :
         tabs
     }
 
-    suspend fun createTab(name: String, addresses: Collection<String> = emptyList()): Long =
+    suspend fun createTab(
+        name: String,
+        addresses: Collection<String> = emptyList(),
+        filterMask: Int = 0
+    ): Long =
         withContext(Dispatchers.IO) {
             val trimmed = name.trim()
             if (trimmed.isBlank()) return@withContext -1L
@@ -818,6 +879,7 @@ class RameshDatabaseHelper private constructor(context: Context) :
                     put("name", trimmed)
                     put("created_at", now)
                     put("sort_order", nextOrder)
+                    put("filter_mask", filterMask)
                 }
                 tabId = db.insert("sender_tabs", null, cv)
                 if (tabId != -1L && addresses.isNotEmpty()) {
@@ -857,6 +919,19 @@ class RameshDatabaseHelper private constructor(context: Context) :
         }
         _tabsChanged.value = System.currentTimeMillis()
         true
+    }
+
+    suspend fun updateTabFilterMask(tabId: Long, filterMask: Int): Boolean = withContext(Dispatchers.IO) {
+        val rows = writableDatabase.update(
+            "sender_tabs",
+            ContentValues().apply { put("filter_mask", filterMask) },
+            "id = ?",
+            arrayOf(tabId.toString())
+        )
+        if (rows > 0) {
+            _tabsChanged.value = System.currentTimeMillis()
+        }
+        rows > 0
     }
 
     suspend fun updateTabName(tabId: Long, newName: String): Boolean = withContext(Dispatchers.IO) {
@@ -1023,6 +1098,18 @@ class RameshDatabaseHelper private constructor(context: Context) :
         }
     }
 
+    private fun createMessageReactionsTable(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS message_reactions (
+                message_id INTEGER PRIMARY KEY,
+                emoji TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
     private fun createCachedThreadsTable(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -1050,7 +1137,8 @@ class RameshDatabaseHelper private constructor(context: Context) :
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 sort_order INTEGER NOT NULL DEFAULT 0,
-                created_at INTEGER NOT NULL
+                created_at INTEGER NOT NULL,
+                filter_mask INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent()
         )
@@ -1220,7 +1308,7 @@ class RameshDatabaseHelper private constructor(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "ramesh_filters.db"
-        private const val DATABASE_VERSION = 5
+        private const val DATABASE_VERSION = 6
         private const val SQLITE_IN_CHUNK_SIZE = 500
 
         @Volatile

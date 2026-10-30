@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -50,9 +51,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.app.Activity
+import com.ramesh.sms.R
+import com.ramesh.sms.data.util.AppLanguage
+import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.theme.AccentColor
 import com.ramesh.sms.theme.Appearance
 import com.ramesh.sms.theme.AppearanceStore
@@ -77,6 +83,21 @@ import com.ramesh.sms.ui.components.SettingsRowDivider
 import com.ramesh.sms.ui.components.SettingsSectionHeader
 import com.ramesh.sms.ui.components.SettingsSwitchRow
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+
+private fun sendDelayOptions(context: android.content.Context): List<Pair<Int, String>> = listOf(
+    0 to context.getString(R.string.settings_off),
+    3 to context.getString(R.string.settings_seconds_3),
+    5 to context.getString(R.string.settings_seconds_5),
+    10 to context.getString(R.string.settings_seconds_10)
+)
+
+private fun autoDeleteOptions(context: android.content.Context): List<Pair<Int, String>> = listOf(
+    0 to context.getString(R.string.settings_off),
+    500 to context.getString(R.string.settings_500),
+    1_000 to context.getString(R.string.settings_1000),
+    2_000 to context.getString(R.string.settings_2000),
+    5_000 to context.getString(R.string.settings_5000)
+)
 
 private val ToneDotColors: List<Pair<String, androidx.compose.ui.graphics.Color?>> =
     BubbleTone.values().map { tone ->
@@ -133,12 +154,12 @@ fun SettingsScreen(
                 title = {
                     Column {
                         Text(
-                            text = "Settings",
+                            text = stringResource(R.string.settings_title),
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.ExtraBold
                         )
                         Text(
-                            text = "Look & feel",
+                            text = stringResource(R.string.settings_subtitle),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -146,7 +167,7 @@ fun SettingsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -167,15 +188,15 @@ fun SettingsScreen(
 
             item(key = "theme-header") {
                 SettingsSectionHeader(
-                    title = "Theme",
-                    subtitle = "Pick a mode and an accent color"
+                    title = stringResource(R.string.settings_theme_header),
+                    subtitle = stringResource(R.string.settings_theme_sub)
                 )
             }
             item(key = "theme-group") {
                 SettingsGroup {
                     SettingsChoiceRow(
-                        title = "Theme mode",
-                        subtitle = "Black uses true black panels for AMOLED screens",
+                        title = stringResource(R.string.settings_theme_mode),
+                        subtitle = stringResource(R.string.settings_theme_mode_sub),
                         options = ThemeMode.values().map { it.label },
                         selectedIndex = look.themeMode.ordinal,
                         onSelect = { index ->
@@ -186,12 +207,12 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(top = 12.dp, bottom = 14.dp)) {
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Text(
-                                text = "Accent color",
+                                text = stringResource(R.string.settings_accent),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Used for buttons, unread badges and the default bubble",
+                                text = stringResource(R.string.settings_accent_sub),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -203,7 +224,7 @@ fun SettingsScreen(
                         )
                         if (look.accent == AccentColor.SYSTEM) {
                             Text(
-                                text = "Follows your wallpaper colors on Android 12+",
+                                text = stringResource(R.string.settings_accent_system),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.outline,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
@@ -215,15 +236,15 @@ fun SettingsScreen(
 
             item(key = "bubbles-header") {
                 SettingsSectionHeader(
-                    title = "Bubbles",
-                    subtitle = "Textra-style bubbles, colors and message text"
+                    title = stringResource(R.string.settings_bubbles_header),
+                    subtitle = stringResource(R.string.settings_bubbles_sub)
                 )
             }
             item(key = "bubbles-group") {
                 SettingsGroup {
                     SettingsChoiceRow(
-                        title = "Bubble style",
-                        subtitle = "Textra adds a small tail to the bottom corner",
+                        title = stringResource(R.string.settings_bubble_style),
+                        subtitle = stringResource(R.string.settings_bubble_style_sub),
                         options = BubbleStyle.values().map { it.label },
                         selectedIndex = look.bubbleStyle.ordinal,
                         onSelect = { index ->
@@ -232,14 +253,14 @@ fun SettingsScreen(
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.ChatBubbleOutline,
-                        title = "Bubble tail",
-                        subtitle = "Pointy corner on the sender side",
+                        title = stringResource(R.string.settings_bubble_tail),
+                        subtitle = stringResource(R.string.settings_bubble_tail_sub),
                         checked = look.bubbleTail,
                         onCheckedChange = { enabled -> update { it.copy(bubbleTail = enabled) } },
                         showDivider = true
                     )
                     SettingsColorChoiceRow(
-                        title = "Sent bubble color",
+                        title = stringResource(R.string.settings_sent_color),
                         options = ToneDotColors,
                         selectedIndex = look.sentTone.ordinal,
                         onSelect = { index ->
@@ -247,7 +268,7 @@ fun SettingsScreen(
                         }
                     )
                     SettingsColorChoiceRow(
-                        title = "Received bubble color",
+                        title = stringResource(R.string.settings_received_color),
                         options = ToneDotColors,
                         selectedIndex = look.receivedTone.ordinal,
                         onSelect = { index ->
@@ -255,7 +276,7 @@ fun SettingsScreen(
                         }
                     )
                     SettingsChoiceRow(
-                        title = "Message text size",
+                        title = stringResource(R.string.settings_text_size),
                         options = ChatFontSize.values().map { it.label },
                         selectedIndex = look.chatFontSize.ordinal,
                         onSelect = { index ->
@@ -263,7 +284,7 @@ fun SettingsScreen(
                         }
                     )
                     SettingsChoiceRow(
-                        title = "Message font",
+                        title = stringResource(R.string.settings_message_font),
                         options = ChatFontFamily.values().map { it.label },
                         selectedIndex = look.fontFamily.ordinal,
                         onSelect = { index ->
@@ -276,14 +297,14 @@ fun SettingsScreen(
 
             item(key = "background-header") {
                 SettingsSectionHeader(
-                    title = "Chat background",
-                    subtitle = "A flat tone or your own photo"
+                    title = stringResource(R.string.settings_background_header),
+                    subtitle = stringResource(R.string.settings_background_sub)
                 )
             }
             item(key = "background-group") {
                 SettingsGroup {
                     SettingsColorChoiceRow(
-                        title = "Background",
+                        title = stringResource(R.string.settings_background),
                         options = BackdropDotColors,
                         selectedIndex = look.backdrop.ordinal,
                         onSelect = { index ->
@@ -291,15 +312,15 @@ fun SettingsScreen(
                         }
                     )
                     SettingsActionRow(
-                        title = if (look.wallpaperUri == null) "Choose image" else "Change image",
-                        subtitle = "Pick a photo from your gallery",
+                        title = if (look.wallpaperUri == null) stringResource(R.string.settings_choose_image) else stringResource(R.string.settings_change_image),
+                        subtitle = stringResource(R.string.settings_pick_photo),
                         icon = Icons.Default.Wallpaper,
                         onClick = { wallpaperPicker.launch(arrayOf("image/*")) }
                     )
                     if (look.wallpaperUri != null) {
                         SettingsActionRow(
-                            title = "Remove wallpaper",
-                            subtitle = "Go back to the plain background",
+                            title = stringResource(R.string.settings_remove_wallpaper),
+                            subtitle = stringResource(R.string.settings_remove_wallpaper_sub),
                             icon = Icons.Default.DeleteOutline,
                             onClick = { update { it.copy(wallpaperUri = null) } }
                         )
@@ -308,85 +329,97 @@ fun SettingsScreen(
             }
 
             item(key = "chat-header") {
-                SettingsSectionHeader(title = "Conversation", subtitle = "In-chat behaviour")
+                SettingsSectionHeader(title = stringResource(R.string.settings_chat_header), subtitle = stringResource(R.string.settings_chat_sub))
             }
             item(key = "chat-group") {
                 SettingsGroup {
                     SettingsSwitchRow(
                         icon = Icons.Default.People,
-                        title = "Show contact photos",
-                        subtitle = "Show the avatar next to received messages",
+                        title = stringResource(R.string.settings_show_photos),
+                        subtitle = stringResource(R.string.settings_show_photos_sub),
                         checked = look.showChatAvatars,
                         onCheckedChange = { enabled -> update { it.copy(showChatAvatars = enabled) } },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.CalendarMonth,
-                        title = "Date dividers",
-                        subtitle = "Today / Yesterday headers between message groups",
+                        title = stringResource(R.string.settings_date_dividers),
+                        subtitle = stringResource(R.string.settings_date_dividers_sub),
                         checked = look.showDateHeaders,
                         onCheckedChange = { enabled -> update { it.copy(showDateHeaders = enabled) } },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.Keyboard,
-                        title = "Enter key sends",
-                        subtitle = "Send with the keyboard action instead of tapping the button",
+                        title = stringResource(R.string.settings_enter_sends),
+                        subtitle = stringResource(R.string.settings_enter_sends_sub),
                         checked = look.enterToSend,
                         onCheckedChange = { enabled -> update { it.copy(enterToSend = enabled) } },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.TextSnippet,
-                        title = "Character counter",
-                        subtitle = "Show the SMS segment counter above the input bar",
+                        title = stringResource(R.string.settings_counter),
+                        subtitle = stringResource(R.string.settings_counter_sub),
                         checked = look.showCharacterCounter,
                         onCheckedChange = { enabled -> update { it.copy(showCharacterCounter = enabled) } },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.CalendarMonth,
-                        title = "Tap date to switch calendar",
-                        subtitle = "Toggle standard and Shamsi dates from a message timestamp",
+                        title = stringResource(R.string.settings_date_tap),
+                        subtitle = stringResource(R.string.settings_date_tap_sub),
                         checked = inboxState.enableDateTapShamsiToggle,
-                        onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) }
+                        onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
+                        showDivider = true
+                    )
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_send_delay),
+                        subtitle = stringResource(R.string.settings_send_delay_sub),
+                        options = sendDelayOptions(context).map { it.second },
+                        selectedIndex = sendDelayOptions(context).indexOfFirst {
+                            it.first == inboxState.sendDelaySeconds
+                        }.coerceAtLeast(0),
+                        onSelect = { index ->
+                            inboxViewModel.setSendDelaySeconds(sendDelayOptions(context)[index].first)
+                        }
                     )
                 }
             }
 
             item(key = "inbox-header") {
-                SettingsSectionHeader(title = "Inbox", subtitle = "How conversations are listed")
+                SettingsSectionHeader(title = stringResource(R.string.settings_inbox_header), subtitle = stringResource(R.string.settings_inbox_sub))
             }
             item(key = "inbox-group") {
                 SettingsGroup {
                     SettingsSwitchRow(
                         icon = Icons.Default.Tab,
-                        title = "Conversation tabs",
-                        subtitle = "Custom tabs above the inbox for grouping senders",
+                        title = stringResource(R.string.settings_tabs),
+                        subtitle = stringResource(R.string.settings_tabs_sub),
                         checked = inboxState.showTabs,
                         onCheckedChange = { enabled -> inboxViewModel.setShowTabsEnabled(enabled) },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.SimCard,
-                        title = "SIM card filter",
-                        subtitle = "Filter conversations by SIM card",
+                        title = stringResource(R.string.settings_sim_filter),
+                        subtitle = stringResource(R.string.settings_sim_filter_sub),
                         checked = inboxState.showSimFilter,
                         onCheckedChange = { enabled -> inboxViewModel.setShowSimFilterEnabled(enabled) },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.People,
-                        title = "Contact photos",
-                        subtitle = "Show avatars in the conversation list",
+                        title = stringResource(R.string.settings_contact_photos),
+                        subtitle = stringResource(R.string.settings_contact_photos_sub),
                         checked = look.showInboxAvatars,
                         onCheckedChange = { enabled -> update { it.copy(showInboxAvatars = enabled) } },
                         showDivider = true
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.Shield,
-                        title = "Contacts only",
-                        subtitle = "Hide conversations from unknown senders",
+                        title = stringResource(R.string.settings_contacts_only),
+                        subtitle = stringResource(R.string.settings_contacts_only_sub),
                         checked = inboxState.showContactsOnly,
                         onCheckedChange = { inboxViewModel.toggleContactsOnly() }
                     )
@@ -394,14 +427,14 @@ fun SettingsScreen(
             }
 
             item(key = "notifications-header") {
-                SettingsSectionHeader(title = "Notifications", subtitle = "Message alerts")
+                SettingsSectionHeader(title = stringResource(R.string.settings_notifications_header), subtitle = stringResource(R.string.settings_notifications_sub))
             }
             item(key = "notifications-group") {
                 SettingsGroup {
                     SettingsSwitchRow(
                         icon = Icons.Default.DeleteOutline,
-                        title = "Delete action",
-                        subtitle = "Add a Delete button next to Reply and Mark as read",
+                        title = stringResource(R.string.settings_delete_action),
+                        subtitle = stringResource(R.string.settings_delete_action_sub),
                         checked = inboxState.showNotificationDeleteAction,
                         onCheckedChange = { enabled ->
                             inboxViewModel.setNotificationDeleteActionEnabled(enabled)
@@ -410,44 +443,109 @@ fun SettingsScreen(
                     )
                     SettingsSwitchRow(
                         icon = Icons.Default.ContentCopy,
-                        title = "Copy verification codes",
-                        subtitle = "One-tap copy button when an SMS contains a login code",
+                        title = stringResource(R.string.settings_copy_codes),
+                        subtitle = stringResource(R.string.settings_copy_codes_sub),
                         checked = look.otpCopyAction,
-                        onCheckedChange = { enabled -> update { it.copy(otpCopyAction = enabled) } }
+                        onCheckedChange = { enabled -> update { it.copy(otpCopyAction = enabled) } },
+                        showDivider = true
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Default.CheckCircle,
+                        title = stringResource(R.string.settings_delivery),
+                        subtitle = stringResource(R.string.settings_delivery_sub),
+                        checked = inboxState.deliveryReports,
+                        onCheckedChange = { enabled -> inboxViewModel.setDeliveryReportsEnabled(enabled) },
+                        showDivider = true
+                    )
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_lock_screen),
+                        subtitle = stringResource(R.string.settings_lock_screen_sub),
+                        options = listOf(
+                            LockScreenPrivacy.FULL.label,
+                            LockScreenPrivacy.SENDER_ONLY.label,
+                            LockScreenPrivacy.HIDDEN.label
+                        ),
+                        selectedIndex = inboxState.lockScreenPrivacy.ordinal,
+                        onSelect = { index ->
+                            inboxViewModel.setLockScreenPrivacy(LockScreenPrivacy.entries[index])
+                        }
                     )
                 }
             }
 
             item(key = "filtering-header") {
-                SettingsSectionHeader(title = "Filtering", subtitle = "Spam protection")
+                SettingsSectionHeader(title = stringResource(R.string.settings_filtering_header), subtitle = stringResource(R.string.settings_filtering_sub))
             }
             item(key = "filtering-group") {
                 SettingsGroup {
                     SettingsSwitchRow(
                         icon = Icons.Default.Shield,
-                        title = "No spam for contacts",
-                        subtitle = "Never mark messages from your contacts as spam",
+                        title = stringResource(R.string.settings_no_spam_contacts),
+                        subtitle = stringResource(R.string.settings_no_spam_contacts_sub),
                         checked = inboxState.noSpamForContacts,
                         onCheckedChange = { enabled -> inboxViewModel.setNoSpamForContactsEnabled(enabled) },
                         showDivider = true
                     )
                     SettingsActionRow(
-                        title = "Filter Studio",
-                        subtitle = "Manage allowlist and blocklist rules",
+                        title = stringResource(R.string.settings_filter_studio),
+                        subtitle = stringResource(R.string.settings_filter_studio_sub),
                         icon = Icons.Default.FilterAlt,
                         onClick = onOpenFilterStudio
                     )
                 }
             }
 
+            item(key = "language-header") {
+                SettingsSectionHeader(
+                    title = stringResource(R.string.settings_language_header),
+                    subtitle = stringResource(R.string.settings_language_sub)
+                )
+            }
+            item(key = "language-group") {
+                SettingsGroup {
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_app_language),
+                        subtitle = stringResource(R.string.settings_app_language_sub),
+                        options = AppLanguage.entries.map { it.label },
+                        selectedIndex = inboxState.appLanguage.ordinal,
+                        onSelect = { index ->
+                            inboxViewModel.setAppLanguage(AppLanguage.entries[index])
+                            (context as? Activity)?.recreate()
+                        }
+                    )
+                }
+            }
+
+            item(key = "storage-header") {
+                SettingsSectionHeader(
+                    title = stringResource(R.string.settings_storage_header),
+                    subtitle = stringResource(R.string.settings_storage_sub)
+                )
+            }
+            item(key = "storage-group") {
+                SettingsGroup {
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_auto_delete),
+                        subtitle = stringResource(R.string.settings_auto_delete_sub),
+                        options = autoDeleteOptions(context).map { it.second },
+                        selectedIndex = autoDeleteOptions(context).indexOfFirst {
+                            it.first == inboxState.autoDeleteLimit
+                        }.coerceAtLeast(0),
+                        onSelect = { index ->
+                            inboxViewModel.setAutoDeleteLimit(autoDeleteOptions(context)[index].first)
+                        }
+                    )
+                }
+            }
+
             item(key = "reset-header") {
-                SettingsSectionHeader(title = "Reset")
+                SettingsSectionHeader(title = stringResource(R.string.settings_reset_header))
             }
             item(key = "reset-group") {
                 SettingsGroup {
                     SettingsActionRow(
-                        title = "Restore default look",
-                        subtitle = "Turquoise theme, Textra bubbles, no wallpaper",
+                        title = stringResource(R.string.settings_restore_look),
+                        subtitle = stringResource(R.string.settings_restore_look_sub),
                         icon = Icons.Default.RestartAlt,
                         onClick = { showResetDialog = true }
                     )
@@ -462,14 +560,14 @@ fun SettingsScreen(
             shape = SquircleCardShape,
             title = {
                 Text(
-                    text = "Restore default look?",
+                    text = stringResource(R.string.settings_restore_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
                 Text(
-                    text = "Theme, bubbles, fonts and the chat background return to their defaults. Your messages and filters are untouched.",
+                    text = stringResource(R.string.settings_restore_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -481,12 +579,12 @@ fun SettingsScreen(
                         AppearanceStore.reset(context)
                     }
                 ) {
-                    Text("Restore", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.settings_restore), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.settings_cancel))
                 }
             }
         )
@@ -509,7 +607,7 @@ private fun BubblePreviewCard(look: Appearance) {
         )
     ) {
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            ChatDateHeader(text = "Today")
+            ChatDateHeader(text = stringResource(R.string.settings_today))
             Row(modifier = Modifier.fillMaxWidth()) {
                 Surface(
                     shape = chatBubbleShape(false, look.bubbleStyle, look.bubbleTail),
@@ -520,7 +618,7 @@ private fun BubblePreviewCard(look: Appearance) {
                     )
                 ) {
                     Text(
-                        text = "Ramesh looks like this",
+                        text = stringResource(R.string.settings_preview_in),
                         style = MaterialTheme.typography.bodyMedium,
                         color = look.receivedTone.bubbleContent(false),
                         modifier = Modifier
@@ -547,7 +645,7 @@ private fun BubblePreviewCard(look: Appearance) {
                     color = look.sentTone.bubbleBackground(true)
                 ) {
                     Text(
-                        text = "And this is your bubble",
+                        text = stringResource(R.string.settings_preview_out),
                         style = MaterialTheme.typography.bodyMedium,
                         color = look.sentTone.bubbleContent(true),
                         modifier = Modifier

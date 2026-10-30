@@ -220,6 +220,20 @@ private fun BubbleContent(
         } else {
             bodyText()
         }
+        val reaction = message.reaction
+        if (!reaction.isNullOrBlank()) {
+            Spacer(modifier = Modifier.height(3.dp))
+            Surface(
+                shape = PillShape,
+                color = contentColor.copy(alpha = 0.14f)
+            ) {
+                Text(
+                    text = reaction,
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 1.dp)
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Row(
             modifier = Modifier.align(Alignment.End),

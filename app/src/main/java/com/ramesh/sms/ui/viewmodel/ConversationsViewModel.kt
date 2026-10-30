@@ -22,7 +22,9 @@ import com.ramesh.sms.data.model.SearchMessageResult
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.data.model.SimInfo
 import com.ramesh.sms.data.repository.SmsRepository
+import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.AppPreferences
+import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.data.util.PhoneNumberKeys
 import com.ramesh.sms.data.util.UserPreferences
 import kotlinx.coroutines.CancellationException
@@ -53,7 +55,12 @@ data class ConversationsUiState(
     val showNotificationDeleteAction: Boolean = false,
     val showTabs: Boolean = true,
     val showSimFilter: Boolean = true,
-    val noSpamForContacts: Boolean = false
+    val noSpamForContacts: Boolean = false,
+    val deliveryReports: Boolean = true,
+    val sendDelaySeconds: Int = 0,
+    val autoDeleteLimit: Int = 0,
+    val lockScreenPrivacy: LockScreenPrivacy = LockScreenPrivacy.FULL,
+    val appLanguage: AppLanguage = AppLanguage.SYSTEM
 )
 
 class ConversationsViewModel(
@@ -79,7 +86,12 @@ class ConversationsViewModel(
             showNotificationDeleteAction = userPreferences.showNotificationDeleteAction,
             showTabs = userPreferences.showTabs,
             showSimFilter = userPreferences.showSimFilter,
-            noSpamForContacts = userPreferences.noSpamForContacts
+            noSpamForContacts = userPreferences.noSpamForContacts,
+            deliveryReports = userPreferences.deliveryReports,
+            sendDelaySeconds = userPreferences.sendDelaySeconds,
+            autoDeleteLimit = userPreferences.autoDeleteLimit,
+            lockScreenPrivacy = userPreferences.lockScreenPrivacy,
+            appLanguage = userPreferences.appLanguage
         )
     )
     val uiState: StateFlow<ConversationsUiState> = _uiState.asStateFlow()
@@ -133,7 +145,12 @@ class ConversationsViewModel(
             showNotificationDeleteAction = userPreferences.showNotificationDeleteAction,
             showTabs = userPreferences.showTabs,
             showSimFilter = userPreferences.showSimFilter,
-            noSpamForContacts = userPreferences.noSpamForContacts
+            noSpamForContacts = userPreferences.noSpamForContacts,
+            deliveryReports = userPreferences.deliveryReports,
+            sendDelaySeconds = userPreferences.sendDelaySeconds,
+            autoDeleteLimit = userPreferences.autoDeleteLimit,
+            lockScreenPrivacy = userPreferences.lockScreenPrivacy,
+            appLanguage = userPreferences.appLanguage
         )
         repository.invalidateLookupCaches()
         checkDefaultSmsStatus()
@@ -306,11 +323,30 @@ class ConversationsViewModel(
     }
 
     private fun threadMatchesTab(thread: ConversationThread, tab: SenderTab): Boolean {
-        if (tab.senderAddresses.isEmpty()) return false
-        val canonical = PhoneNumberKeys.canonical(thread.address)
-        if (canonical in tab.senderAddresses) return true
-        val keys = PhoneNumberKeys.keys(thread.address)
-        return keys.any { it in tab.senderAddresses }
+        val hasSenders = tab.senderAddresses.isNotEmpty()
+        if (!hasSenders && !tab.hasContentFilter) return false
+
+        if (hasSenders) {
+            val canonical = PhoneNumberKeys.canonical(thread.address)
+            val inSenders = canonical in tab.senderAddresses ||
+                PhoneNumberKeys.keys(thread.address).any { it in tab.senderAddresses }
+            if (!inSenders) return false
+        }
+
+        // Spam state: the two flags cancel each other out (no restriction).
+        val wantsSpam = tab.spamOnly && !tab.nonSpamOnly
+        val wantsNonSpam = tab.nonSpamOnly && !tab.spamOnly
+        val isSpamThread = thread.isLastReceivedSpam
+        if (wantsSpam && !isSpamThread) return false
+        if (wantsNonSpam && isSpamThread) return false
+
+        // Contact state: same rule.
+        val wantsContacts = tab.contactsOnly && !tab.nonContactsOnly
+        val wantsNonContacts = tab.nonContactsOnly && !tab.contactsOnly
+        if (wantsContacts && !thread.isContact) return false
+        if (wantsNonContacts && thread.isContact) return false
+
+        return true
     }
 
     private fun filterThreads(
@@ -459,6 +495,31 @@ class ConversationsViewModel(
         loadThreads(silent = true, force = true)
     }
 
+    fun setDeliveryReportsEnabled(enabled: Boolean) {
+        userPreferences.deliveryReports = enabled
+        _uiState.value = _uiState.value.copy(deliveryReports = enabled)
+    }
+
+    fun setSendDelaySeconds(seconds: Int) {
+        userPreferences.sendDelaySeconds = seconds
+        _uiState.value = _uiState.value.copy(sendDelaySeconds = seconds)
+    }
+
+    fun setAutoDeleteLimit(limit: Int) {
+        userPreferences.autoDeleteLimit = limit
+        _uiState.value = _uiState.value.copy(autoDeleteLimit = limit)
+    }
+
+    fun setAppLanguage(language: AppLanguage) {
+        userPreferences.appLanguage = language
+        _uiState.value = _uiState.value.copy(appLanguage = language)
+    }
+
+    fun setLockScreenPrivacy(privacy: LockScreenPrivacy) {
+        userPreferences.lockScreenPrivacy = privacy
+        _uiState.value = _uiState.value.copy(lockScreenPrivacy = privacy)
+    }
+
     fun checkDefaultSmsStatus() {
         _uiState.value = _uiState.value.copy(isDefaultSmsApp = repository.isDefaultSmsApp())
     }
@@ -596,6 +657,27 @@ class ConversationsViewModel(
                 selectTab(id)
                 onCreated(id)
             }
+        }
+    }
+
+    /** Turns a content filter flag on or off for [tabId] and re-applies the inbox filter. */
+    fun setTabFilterFlag(tabId: Long, mask: Int, enabled: Boolean) {
+        val current = _uiState.value
+        val tab = current.tabs.find { it.id == tabId } ?: return
+        val updatedTab = tab.withFlag(mask, enabled)
+        val updatedTabs = current.tabs.map { if (it.id == tabId) updatedTab else it }
+        _uiState.value = current.copy(
+            tabs = updatedTabs,
+            filteredThreads = filterThreads(
+                threads = current.threads,
+                query = current.searchQuery.trim(),
+                selectedTabId = current.selectedTabId,
+                tabs = updatedTabs,
+                selectedSimFilterSubId = current.selectedSimFilterSubId
+            )
+        )
+        viewModelScope.launch {
+            repository.updateTabFilterMask(tabId, updatedTab.filterMask)
         }
     }
 
