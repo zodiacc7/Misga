@@ -49,7 +49,7 @@
     <string name="filter_tab_allowlist">مجاز (%1$d)</string>
     <string name="filter_tab_blocklist">مسدود (%1$d)</string>
     <string name="filter_tab_presets">همهٔ پیش‌تنظیم‌ها (%1$d)</string>
-    <string name="filter_delete_rule_body">آیا از حذف '%1$s' مطمئن هستید؟ این قاعده دیگر پیام‌های دریافتی را فیلتر نمی‌کند.</string>
+    <string name="filter_delete_rule_body">آیا از حذف \'%1$s\' مطمئن هستید؟ این قاعده دیگر پیام‌های دریافتی را فیلتر نمی‌کند.</string>
     <string name="filter_pattern_value">الگو: %1$s</string>
     <string name="filter_error">خطا: %1$s</string>
     <string name="filter_matched_substring">بخش منطبق: %1$s</string>

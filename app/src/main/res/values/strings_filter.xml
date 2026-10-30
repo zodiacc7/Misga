@@ -36,8 +36,8 @@
     <string name="filter_allowlist_priority">Allowlist (top priority)</string>
     <string name="filter_blocklist_action">Blocklist action:</string>
     <string name="filter_priority_title">Allowlist priority system</string>
-    <string name="filter_empty_allowlist">No allowlist rules active. Tap '+' to create one.</string>
-    <string name="filter_empty_blocklist">No blocklist rules active. Tap '+' to create one.</string>
+    <string name="filter_empty_allowlist">No allowlist rules active. Tap \'+\' to create one.</string>
+    <string name="filter_empty_blocklist">No blocklist rules active. Tap \'+\' to create one.</string>
     <string name="filter_allowlist_badge">ALLOWLIST • TOP PRIORITY</string>
     <string name="filter_action_prefix">Action:</string>
     <string name="filter_edit_rule">Edit rule</string>
@@ -49,7 +49,7 @@
     <string name="filter_tab_allowlist">Allowlist (%1$d)</string>
     <string name="filter_tab_blocklist">Blocklist (%1$d)</string>
     <string name="filter_tab_presets">All presets (%1$d)</string>
-    <string name="filter_delete_rule_body">Are you sure you want to delete '%1$s'? This rule will no longer filter incoming messages.</string>
+    <string name="filter_delete_rule_body">Are you sure you want to delete \'%1$s\'? This rule will no longer filter incoming messages.</string>
     <string name="filter_pattern_value">Pattern: %1$s</string>
     <string name="filter_error">Error: %1$s</string>
     <string name="filter_matched_substring">Matched substring: %1$s</string>

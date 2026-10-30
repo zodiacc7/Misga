@@ -446,7 +446,7 @@ fun FilterStudioScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = stringResource(R.string.filter_pattern_value, state.testPattern),
+                            text = stringResource(R.string.filter_pattern_value, state.testPattern.orEmpty()),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(8.dp)
