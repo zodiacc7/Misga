@@ -102,19 +102,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Beta builds (1.1.0-beta.1 and friends) are always published as prereleases so
-          # that nobody gets them through the "latest release" link.
+          # Beta builds (1.1.0-beta.N) are always published as prereleases so that nobody gets
+          # them through the "latest release" link.
           PRERELEASE=""
           if [[ "$VERSION" == *-* ]]; then
             PRERELEASE="--prerelease"
           fi
-          gh release upload "$VERSION" \
-            "dist/ramesh-${VERSION}-universal.apk" \
-            dist/SHA256SUMS \
-            --clobber 2>/dev/null || \
-          gh release create "$VERSION" \
-            --title "$VERSION" \
-            --generate-notes \
-            $PRERELEASE \
-            "dist/ramesh-${VERSION}-universal.apk" \
-            dist/SHA256SUMS
+          APK="dist/ramesh-${VERSION}-universal.apk"
+          ls -l "$APK" dist/SHA256SUMS
+
+          # Start from a clean slate: a half-uploaded draft would block the next attempt.
+          gh release delete "$VERSION" --yes --cleanup-tag=false || true
+
+          # Upload with retries: the runner occasionally drops an asset upload.
+          upload() {
+            for attempt in 1 2 3 4 5; do
+              if gh release "$@" ; then
+                return 0
+              fi
+              echo "upload attempt $attempt failed, retrying..."
+              sleep 5
+            done
+            return 1
+          }
+
+          upload create "$VERSION" --title "$VERSION" --generate-notes $PRERELEASE --verify-tag "$APK"
+          gh release upload "$VERSION" dist/SHA256SUMS --clobber
+
+          # Make sure the release is public (gh leaves it as a draft if an upload failed).
+          gh release edit "$VERSION" --draft=false
+          gh release view "$VERSION" --json assets,isPrerelease

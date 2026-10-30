@@ -1,0 +1,5 @@
+Ramesh 1.1.0-beta.3 — the same fixes as beta 2, now published properly.
+
+- Swipe left/right on a message now actually works: a short drag fires the action you picked in Settings and the bubble snaps back.
+- The New tab / Edit tab dialog keeps its Cancel and Save buttons: the body scrolls, the buttons stay pinned.
+- Switching the app language (Persian/English) no longer crashes; the locale is applied before the screen is created, so themes and dialogs stay intact.
