@@ -1,7 +1,9 @@
 package com.miss.ga.ui.components
 
+import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.LruCache
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -35,6 +37,12 @@ import com.miss.ga.ui.util.senderDisplayName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+/**
+ * Small in-memory cache so scrolling the inbox (and showing chat avatars) does
+ * not re-decode the same contact photo over and over.
+ */
+private val avatarBitmapCache = LruCache<String, ImageBitmap>(24)
+
 @Composable
 fun ConversationAvatar(
     address: String,
@@ -50,23 +58,31 @@ fun ConversationAvatar(
     val showLetter = isContact || initial.any { it.isLetter() }
 
     val context = LocalContext.current
-    var avatarBitmap by remember(photoUri) { mutableStateOf<ImageBitmap?>(null) }
+    var avatarBitmap by remember(photoUri) {
+        mutableStateOf(photoUri?.let { avatarBitmapCache.get(it) })
+    }
 
     LaunchedEffect(photoUri) {
-        if (!photoUri.isNullOrBlank()) {
-            avatarBitmap = withContext(Dispatchers.IO) {
-                try {
-                    val uri = Uri.parse(photoUri)
-                    context.contentResolver.openInputStream(uri)?.use { stream ->
-                        BitmapFactory.decodeStream(stream)?.asImageBitmap()
-                    }
-                } catch (e: Exception) {
-                    null
-                }
-            }
-        } else {
+        if (photoUri.isNullOrBlank()) {
             avatarBitmap = null
+            return@LaunchedEffect
         }
+        val cached = avatarBitmapCache.get(photoUri)
+        if (cached != null) {
+            avatarBitmap = cached
+            return@LaunchedEffect
+        }
+        val decoded: ImageBitmap? = withContext(Dispatchers.IO) {
+            try {
+                decodeSampledAvatar(context, Uri.parse(photoUri))?.asImageBitmap()
+            } catch (e: Exception) {
+                null
+            }
+        }
+        if (decoded != null) {
+            avatarBitmapCache.put(photoUri, decoded)
+        }
+        avatarBitmap = decoded
     }
 
     val currentBitmap = avatarBitmap
@@ -107,5 +123,24 @@ fun ConversationAvatar(
                 )
             }
         }
+    }
+}
+
+/** Decodes a contact photo down to avatar size instead of the full camera image. */
+private fun decodeSampledAvatar(context: Context, uri: Uri, targetPx: Int = 192): android.graphics.Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, bounds)
+    }
+    var sampleSize = 1
+    val width = bounds.outWidth
+    if (width > 0) {
+        while (width / (sampleSize * 2) >= targetPx) {
+            sampleSize *= 2
+        }
+    }
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    return context.contentResolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, options)
     }
 }

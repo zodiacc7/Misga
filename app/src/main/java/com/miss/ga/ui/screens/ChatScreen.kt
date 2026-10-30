@@ -924,6 +924,11 @@ private fun ChatMessageList(
             val isHighlighted = message.id == highlightedMessageId
             val simSlotNumber = if (hasMultipleSims) simSlotMap[message.subId] else null
             val olderMessage = messages.getOrNull(messages.lastIndex - index - 1)
+            // Like Telegram/Textra: one avatar per run of incoming messages.
+            val newerMessage = messages.getOrNull(messages.lastIndex - index + 1)
+            val showAvatarForMessage = look.showChatAvatars &&
+                !message.isSent &&
+                (newerMessage == null || newerMessage.isSent)
             val headerText = if (
                 look.showDateHeaders &&
                 (olderMessage == null || !SmsDateFormats.isSameDay(olderMessage.date, message.date))
@@ -954,7 +959,7 @@ private fun ChatMessageList(
                 } else {
                     val isTargetOfReset = (activeTextBubbleId == message.id)
                     val bubbleResetKey = if (isTargetOfReset) selectionResetTick else 0
-                    val avatarSlot: (@Composable () -> Unit)? = if (look.showChatAvatars) {
+                    val avatarSlot: (@Composable () -> Unit)? = if (showAvatarForMessage) {
                         {
                             ConversationAvatar(
                                 address = message.address,
@@ -979,7 +984,7 @@ private fun ChatMessageList(
                         selectionResetKey = bubbleResetKey,
                         onBubbleTouched = { onBubbleTouched(message.id) },
                         onOutsideTap = onOutsideTap,
-                        showAvatar = look.showChatAvatars,
+                        showAvatar = showAvatarForMessage,
                         avatar = avatarSlot
                     )
                 }
