@@ -1,5 +1,5 @@
-• New Textra-style Settings screen: theme mode (Auto/Light/Dark/AMOLED Black) and nine accent colours
-• Bubble styles with a tail, separate sent/received bubble colours, message text size and font
+• New Textra-style Settings screen: theme mode (Auto/Light/Dark/AMOLED Black) and nine accent colors
+• Bubble styles with a tail, separate sent/received bubble colors, message text size and font
 • Chat background tones and support for your own wallpaper photo
 • Contact photos in chats, Today/Yesterday date dividers, Enter-to-send and character counter options
 • Inbox overflow menu, hidden avatars option and one-tap "Copy code" action on verification SMS
