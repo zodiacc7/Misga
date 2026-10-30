@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.util.Log
 import android.telephony.SubscriptionManager
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.FilterAction
