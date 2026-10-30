@@ -6,7 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -41,6 +41,20 @@ jobs:
           name: ramesh-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      # Publish an installable debug build so testers always have a fresh APK
+      # without digging through Actions artifacts.
+      - name: Publish debug APK
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/*.apk ramesh-debug.apk
+          gh release view debug-latest > /dev/null 2>&1 || gh release create debug-latest \
+            --prerelease \
+            --title "Debug build" \
+            --notes "Automatic debug build of \`main\`. Unsigned, package \`com.ramesh.sms.dev\`, installs next to the release build."
+          gh release upload debug-latest ramesh-debug.apk --clobber
 
       # CI logs are not always reachable from automation, so surface the
       # interesting parts of the Gradle output as check annotations.
