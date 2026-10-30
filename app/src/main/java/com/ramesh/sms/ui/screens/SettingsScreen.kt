@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
+import com.ramesh.sms.R
 import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.theme.AccentColor
