@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -119,15 +120,25 @@ fun TabEditorDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        // Cap the dialog to the screen so the Cancel/Save row can never be pushed off-screen;
+        // the body scrolls instead when there are many senders.
+        val maxDialogHeight = (LocalConfiguration.current.screenHeightDp.dp * 0.88f)
         Surface(
             shape = SquircleCardShape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .heightIn(max = maxDialogHeight)
         ) {
-            Column(modifier = Modifier.padding(20.dp)) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 20.dp, end = 20.dp, top = 20.dp)
+                ) {
                 Text(
                     text = stringResource(
                         if (initialTab == null) R.string.tab_new_title else R.string.tab_edit_title
@@ -286,10 +297,14 @@ fun TabEditorDialog(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
                 Row(
                     horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.fillMaxWidth()
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.tab_cancel)) }
                     Spacer(modifier = Modifier.width(8.dp))

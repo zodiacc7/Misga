@@ -1,6 +1,7 @@
 package com.ramesh.sms
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -21,11 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
-import com.ramesh.sms.data.util.AppPreferences
 import com.ramesh.sms.engine.NotificationHelper
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.RameshTheme
-import com.ramesh.sms.ui.util.ProvideAppLanguage
+import com.ramesh.sms.ui.util.localizedContext
 import java.util.Locale
 
 class MainActivity : ComponentActivity() {
@@ -39,6 +39,12 @@ class MainActivity : ComponentActivity() {
         // ConversationsScreen reloads on resume and shows a banner if SMS is still denied.
     }
 
+    override fun attachBaseContext(newBase: Context) {
+        // The language picked in Settings is applied here, so the whole Activity (theme,
+        // resources, RTL layout) is localised before any composable runs.
+        super.attachBaseContext(localizedContext(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Textra-style look & feel is stored separately from inbox preferences.
@@ -48,11 +54,8 @@ class MainActivity : ComponentActivity() {
 
         requestRequiredPermissions()
 
-        // Language is applied for the whole process; Settings recreates the activity on change.
-        val appLanguage = AppPreferences(this).appLanguage
-
+        // Language is applied in attachBaseContext; Settings recreates the activity on change.
         setContent {
-            ProvideAppLanguage(appLanguage) {
             RameshTheme {
                 // Forced dark/black themes need light system-bar icons to stay readable.
                 val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -73,7 +76,6 @@ class MainActivity : ComponentActivity() {
                         onComposeNavHandled = { pendingComposeNav = null }
                     )
                 }
-            }
             }
         }
     }

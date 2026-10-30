@@ -69,14 +69,11 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -95,6 +92,10 @@ import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -1090,10 +1091,10 @@ private fun ChatMessageList(
 }
 
 /**
- * Wraps a bubble in a horizontal swipe gesture. The row always springs back into place and
- * simply reports the configured [SwipeAction], so nothing is ever dismissed by accident.
+ * Wraps a bubble in a horizontal swipe gesture. A short drag (64dp) is enough to fire the
+ * configured action, the bubble follows the finger and always snaps back, so nothing is ever
+ * dismissed by accident. Vertical drags are left to the list so scrolling stays natural.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SwipeableMessage(
     startAction: SwipeAction,
@@ -1106,39 +1107,57 @@ private fun SwipeableMessage(
         return
     }
 
-    val dismissState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            when (value) {
-                SwipeToDismissBoxValue.StartToEnd -> if (startAction != SwipeAction.NONE) onAction(startAction)
-                SwipeToDismissBoxValue.EndToStart -> if (endAction != SwipeAction.NONE) onAction(endAction)
-                else -> Unit
-            }
-            // Never actually dismiss the message: perform the action and snap back.
-            false
-        }
-    )
+    val thresholdPx = with(LocalDensity.current) { SwipeThreshold.toPx() }
+    val maxOffsetPx = thresholdPx * 1.6f
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
 
-    SwipeToDismissBox(
-        state = dismissState,
-        enableDismissFromStartToEnd = startAction != SwipeAction.NONE,
-        enableDismissFromEndToStart = endAction != SwipeAction.NONE,
-        backgroundContent = {
-            val active = when (dismissState.dismissDirection) {
-                SwipeToDismissBoxValue.StartToEnd -> startAction
-                SwipeToDismissBoxValue.EndToStart -> endAction
-                else -> SwipeAction.NONE
-            }
+    Box(modifier = Modifier.fillMaxWidth()) {
+        if (dragging && dragOffset != 0f) {
+            val active = if (dragOffset > 0f) startAction else endAction
             if (active != SwipeAction.NONE) {
-                SwipeActionHint(active = active, fromStart = dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+                val progress = (kotlin.math.abs(dragOffset) / thresholdPx).coerceIn(0f, 1f)
+                SwipeActionHint(active = active, fromStart = dragOffset > 0f, progress = progress)
             }
         }
-    ) {
-        content()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .graphicsLayer { translationX = dragOffset }
+                .pointerInput(startAction, endAction) {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            dragging = true
+                            dragOffset = 0f
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset = (dragOffset + dragAmount).coerceIn(-maxOffsetPx, maxOffsetPx)
+                        },
+                        onDragEnd = {
+                            val fired = when {
+                                dragOffset >= thresholdPx -> startAction
+                                dragOffset <= -thresholdPx -> endAction
+                                else -> SwipeAction.NONE
+                            }
+                            dragging = false
+                            dragOffset = 0f
+                            if (fired != SwipeAction.NONE) onAction(fired)
+                        },
+                        onDragCancel = {
+                            dragging = false
+                            dragOffset = 0f
+                        }
+                    )
+                }
+        ) {
+            content()
+        }
     }
 }
 
 @Composable
-private fun SwipeActionHint(active: SwipeAction, fromStart: Boolean) {
+private fun SwipeActionHint(active: SwipeAction, fromStart: Boolean, progress: Float = 1f) {
     val isDelete = active == SwipeAction.DELETE
     val tint = if (isDelete) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
     Row(
@@ -1146,18 +1165,30 @@ private fun SwipeActionHint(active: SwipeAction, fromStart: Boolean) {
         horizontalArrangement = if (fromStart) Arrangement.Start else Arrangement.End,
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 18.dp)
     ) {
+        val alpha = 0.35f + 0.65f * progress
         Icon(
             imageVector = if (isDelete) Icons.Default.Delete else Icons.Default.MarkEmailRead,
             contentDescription = null,
-            tint = tint,
-            modifier = Modifier.size(22.dp)
+            tint = tint.copy(alpha = alpha),
+            modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(text = active.label, color = tint, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = when (active) {
+                SwipeAction.DELETE -> stringResource(R.string.swipe_action_delete)
+                SwipeAction.MARK_READ -> stringResource(R.string.swipe_action_mark_read)
+                SwipeAction.NONE -> stringResource(R.string.swipe_action_off)
+            },
+            color = tint.copy(alpha = alpha),
+            fontWeight = FontWeight.Bold
+        )
     }
 }
+
+/** How far a message has to travel sideways before the swipe action fires. */
+private val SwipeThreshold = 64.dp
 
 private val ReactionEmojis = listOf("❤️", "👍", "😂", "😮", "😢", "🙏", "🔥", "🎉")
 
