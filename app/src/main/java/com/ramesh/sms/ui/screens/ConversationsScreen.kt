@@ -196,8 +196,9 @@ fun ConversationsScreen(
     var activeProfileDialogInfo by remember { mutableStateOf<ProfileDialogData?>(null) }
     var showCustomizationSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    // The search field is hidden behind a magnifier button until the user asks for it.
-    var isSearchOpen by remember { mutableStateOf(false) }
+    // The search field is hidden behind a magnifier button until the user asks for it. A query
+    // that survived a trip to a chat keeps the field open, so results are never shown without it.
+    var isSearchOpen by remember { mutableStateOf(state.searchQuery.isNotBlank()) }
     val searchFocusRequester = remember { FocusRequester() }
     LaunchedEffect(isSearchOpen) {
         if (isSearchOpen) {
