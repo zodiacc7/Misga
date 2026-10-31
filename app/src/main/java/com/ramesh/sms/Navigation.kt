@@ -60,27 +60,26 @@ fun MainNavigation(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
         // Both directions are exact mirrors of each other: the incoming screen travels the full
-        // width and the outgoing one travels the full width in the opposite direction. The
-        // earlier version moved the outgoing screen by a quarter only, which made entering a
-        // chat look different from leaving it.
+        // width and the outgoing one travels the full width in the opposite direction. Slide and
+        // fade use the identical duration so entering and exiting a chat feel the same.
         transitionSpec = {
             (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                 (full * forwardSign).toInt()
-            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
+            } + fadeIn(animationSpec = tween(PageTransitionMillis)))
                 .togetherWith(
                     slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                         (-full * forwardSign).toInt()
-                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis))
                 )
         },
         popTransitionSpec = {
             (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                 (-full * forwardSign).toInt()
-            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
+            } + fadeIn(animationSpec = tween(PageTransitionMillis)))
                 .togetherWith(
                     slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                         (full * forwardSign).toInt()
-                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis))
                 )
         },
         entryProvider = entryProvider {

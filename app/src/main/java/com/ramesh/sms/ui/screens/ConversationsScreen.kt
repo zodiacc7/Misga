@@ -67,7 +67,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -125,6 +125,7 @@ import androidx.compose.ui.text.SpanStyle
 import com.ramesh.sms.ChatNav
 import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
+import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.model.SearchMessageResult
 import androidx.compose.ui.semantics.Role
@@ -331,19 +332,11 @@ fun ConversationsScreen(
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                ExtendedFloatingActionButton(
+                SmallFloatingActionButton(
                     onClick = onNavigateToCompose,
-                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = {
-                        Text(
-                            "New Message",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
+                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = PillShape
                 )
             }
         },
@@ -673,6 +666,8 @@ fun ConversationsScreen(
                                     item = msg,
                                     searchQuery = state.searchQuery,
                                     simSlotNumber = if (hasMultipleSims) simSlotMap[msg.subId] else null,
+                                    useShamsi = state.jalaliScope == JalaliScope.EVERYWHERE,
+                                    appLanguage = state.appLanguage,
                                     onClick = {
                                         openChat(
                                             ChatNav(
@@ -773,6 +768,7 @@ fun ConversationsScreen(
                     hasMultipleSims = hasMultipleSims,
                     showSimBadge = state.showSimBadge,
                     useShamsi = state.jalaliScope == JalaliScope.EVERYWHERE,
+                    appLanguage = state.appLanguage,
                     onOpenChat = openChat,
                     onToggleSelect = viewModel::toggleSelectThread,
                     onEnterSelection = viewModel::enterSelectionMode,
@@ -1226,6 +1222,7 @@ private fun ConversationsInboxList(
     hasMultipleSims: Boolean = false,
     showSimBadge: Boolean = true,
     useShamsi: Boolean = false,
+    appLanguage: AppLanguage = AppLanguage.SYSTEM,
     onOpenChat: (ChatNav) -> Unit,
     onToggleSelect: (Long) -> Unit,
     onEnterSelection: (Long) -> Unit,
@@ -1248,6 +1245,7 @@ private fun ConversationsInboxList(
                 showAvatar = showAvatars,
                 simSlotNumber = if (hasMultipleSims && showSimBadge) simSlotMap[thread.subId] else null,
                 useShamsi = useShamsi,
+                appLanguage = appLanguage,
                 onClick = {
                     if (isSelectionMode) {
                         onToggleSelect(thread.threadId)
@@ -1340,6 +1338,7 @@ private fun ConversationItem(
     showAvatar: Boolean = true,
     simSlotNumber: Int? = null,
     useShamsi: Boolean = false,
+    appLanguage: AppLanguage = AppLanguage.SYSTEM,
     onAvatarClick: (() -> Unit)? = null
 ) {
     val isSelected by remember(thread.threadId) {
@@ -1352,8 +1351,8 @@ private fun ConversationItem(
     } else {
         Color.Transparent
     }
-    val dateText = remember(thread.date, useShamsi) {
-        SmsDateFormats.conversationList(thread.date, useShamsi)
+    val dateText = remember(thread.date, useShamsi, appLanguage) {
+        SmsDateFormats.conversationList(thread.date, useShamsi, appLanguage)
     }
     val isLastReceivedSpam = thread.isLastReceivedSpam
 
@@ -1559,7 +1558,9 @@ private fun SearchMessageResultItem(
     searchQuery: String,
     onClick: () -> Unit,
     simSlotNumber: Int? = null,
-    onAvatarClick: (() -> Unit)? = null
+    onAvatarClick: (() -> Unit)? = null,
+    useShamsi: Boolean = false,
+    appLanguage: AppLanguage = AppLanguage.SYSTEM
 ) {
     val displayName = senderDisplayName(item.contactName, item.address)
 
@@ -1568,7 +1569,9 @@ private fun SearchMessageResultItem(
     val annotatedSnippet = remember(item.body, searchQuery, primaryColor, textColor) {
         buildAnnotatedSearchSnippet(item.body, searchQuery, primaryColor, textColor)
     }
-    val dateText = remember(item.date) { SmsDateFormats.conversationList(item.date) }
+    val dateText = remember(item.date, useShamsi, appLanguage) {
+        SmsDateFormats.conversationList(item.date, useShamsi, appLanguage)
+    }
 
     Row(
         modifier = Modifier

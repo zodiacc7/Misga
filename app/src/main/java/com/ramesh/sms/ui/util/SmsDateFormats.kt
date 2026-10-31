@@ -1,5 +1,6 @@
 package com.ramesh.sms.ui.util
 
+import com.ramesh.sms.data.util.AppLanguage
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -124,7 +125,11 @@ object SmsDateFormats {
         }
     }
 
-    fun shamsiDate(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+    fun shamsiDate(
+        timestamp: Long,
+        appLanguage: AppLanguage = AppLanguage.SYSTEM,
+        now: Long = System.currentTimeMillis()
+    ): String {
         val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
         val currentDate = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
 
@@ -133,29 +138,51 @@ object SmsDateFormats {
 
         val monthName = SHAMSI_MONTH_NAMES.getOrElse(jDate.month - 1) { "" }
         val day = toPersianDigits(jDate.day)
+        val year = toPersianDigits(jDate.year)
+
+        // Persian UI: use Persian month names and digits (۲۳ خرداد ۱۴۰۴).
+        // Any other language: use compact numeric format (1404/03/23).
+        val isPersian = appLanguage == AppLanguage.PERSIAN
+        val d = if (isPersian) day else jDate.day.toString()
+        val m = if (isPersian) monthName else jDate.month.toString()
+        val y = if (isPersian) year else jDate.year.toString()
 
         return if (jDate.year == nowJDate.year) {
-            "$day $monthName"
+            if (isPersian) "$d $m" else "$y/$m/$d"
         } else {
-            "$day $monthName ${toPersianDigits(jDate.year)}"
+            if (isPersian) "$d $m $y" else "$y/$m/$d"
         }
     }
 
-    fun formatDate(timestamp: Long, useShamsi: Boolean, now: Long = System.currentTimeMillis()): String {
+    fun formatDate(
+        timestamp: Long,
+        useShamsi: Boolean,
+        appLanguage: AppLanguage = AppLanguage.SYSTEM,
+        now: Long = System.currentTimeMillis()
+    ): String {
         return if (useShamsi) {
-            shamsiDate(timestamp, now)
+            shamsiDate(timestamp, appLanguage, now)
         } else {
             gregorianDate(timestamp, now)
         }
     }
 
-    fun formatDateTimeWithYear(timestamp: Long, useShamsi: Boolean = false): String {
+    fun formatDateTimeWithYear(
+        timestamp: Long,
+        useShamsi: Boolean = false,
+        appLanguage: AppLanguage = AppLanguage.SYSTEM
+    ): String {
         return if (useShamsi) {
             val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
             val jDate = toJalali(messageDate.year, messageDate.monthValue, messageDate.dayOfMonth)
             val monthName = SHAMSI_MONTH_NAMES.getOrElse(jDate.month - 1) { "" }
-            val timePart = toPersianDigits(clock(timestamp))
-            "${toPersianDigits(jDate.year)} $monthName ${toPersianDigits(jDate.day)}، $timePart"
+            val timePart = clock(timestamp)
+            val isPersian = appLanguage == AppLanguage.PERSIAN
+            val y = if (isPersian) toPersianDigits(jDate.year) else jDate.year.toString()
+            val m = if (isPersian) monthName else jDate.month.toString()
+            val d = if (isPersian) toPersianDigits(jDate.day) else jDate.day.toString()
+            val t = if (isPersian) toPersianDigits(timePart) else timePart
+            "$y/$m/$d، $t"
         } else {
             Instant.ofEpochMilli(timestamp).atZone(zone).format(yearMonthDayClock)
         }
@@ -179,40 +206,45 @@ object SmsDateFormats {
     fun dayHeader(
         timestamp: Long,
         useShamsi: Boolean = false,
+        appLanguage: AppLanguage = AppLanguage.SYSTEM,
         now: Long = System.currentTimeMillis()
     ): String {
         val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
-        val todayLabel = if (useShamsi) "امروز" else "Today"
-        val yesterdayLabel = if (useShamsi) "دیروز" else "Yesterday"
+        val isPersian = appLanguage == AppLanguage.PERSIAN
+        val todayLabel = if (useShamsi && isPersian) "امروز" else "Today"
+        val yesterdayLabel = if (useShamsi && isPersian) "دیروز" else "Yesterday"
         return when {
             messageDate == today -> todayLabel
             messageDate == today.minusDays(1) -> yesterdayLabel
-            else -> formatDate(timestamp, useShamsi, now)
+            else -> formatDate(timestamp, useShamsi, appLanguage, now)
         }
     }
 
     fun conversationList(
         timestamp: Long,
         useShamsi: Boolean = false,
+        appLanguage: AppLanguage = AppLanguage.SYSTEM,
         now: Long = System.currentTimeMillis()
     ): String {
         val diff = now - timestamp
         val oneDay = 24 * 60 * 60 * 1000L
         val local = Instant.ofEpochMilli(timestamp).atZone(zone)
+        val isPersian = appLanguage == AppLanguage.PERSIAN
         return when {
             diff < oneDay -> {
                 val text = local.toLocalTime().format(clock)
-                if (useShamsi) toPersianDigits(text) else text
+                if (useShamsi && isPersian) toPersianDigits(text) else text
             }
             diff < 7 * oneDay -> {
-                if (useShamsi) {
+                if (useShamsi && isPersian) {
                     PERSIAN_WEEKDAYS.getOrElse(local.dayOfWeek.value - 1) { "" }
                 } else {
                     local.toLocalDate().format(weekday)
                 }
             }
-            else -> if (useShamsi) shamsiDate(timestamp, now) else local.toLocalDate().format(monthDay)
+            else -> if (useShamsi) shamsiDate(timestamp, appLanguage, now)
+            else local.toLocalDate().format(monthDay)
         }
     }
 }

@@ -91,6 +91,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalTextToolbar
 import androidx.compose.ui.platform.TextToolbarStatus
@@ -104,6 +105,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ramesh.sms.ChatNav
 import com.ramesh.sms.data.model.SimInfo
+import com.ramesh.sms.data.util.AppLanguage
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import com.ramesh.sms.data.model.SmsMessage
@@ -582,10 +584,10 @@ fun ChatScreen(
                             keyboardActions = KeyboardActions(onSend = { performSend() }),
                             shape = InputBarShape,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent
                             ),
                             maxLines = 5
                         )
@@ -865,7 +867,7 @@ fun ChatScreen(
                         modifier = Modifier.padding(top = if (msg.isSent) 4.dp else 8.dp)
                     )
                     Text(
-                        text = SmsDateFormats.formatDateTimeWithYear(msg.date, state.showShamsiDate),
+                        text = SmsDateFormats.formatDateTimeWithYear(msg.date, state.showShamsiDate, state.appLanguage),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
@@ -1052,7 +1054,7 @@ private fun ChatMessageList(
                 look.showDateHeaders &&
                 (olderMessage == null || !SmsDateFormats.isSameDay(olderMessage.date, message.date))
             ) {
-                SmsDateFormats.dayHeader(message.date, showShamsiDate)
+                SmsDateFormats.dayHeader(message.date, showShamsiDate, state.appLanguage)
             } else {
                 null
             }
@@ -1077,6 +1079,7 @@ private fun ChatMessageList(
                         isHighlighted = isHighlighted,
                         simSlotNumber = simSlotNumber,
                         useShamsi = showShamsiDate,
+                        appLanguage = state.appLanguage,
                         onToggleDateFormat = onDateTapAction,
                         onRevealToggle = { revealed -> onRevealToggle(message.id, revealed) },
                         onMarkNotSpam = { onMarkNotSpam(message.id) },
@@ -1106,6 +1109,7 @@ private fun ChatMessageList(
                         isHighlighted = isHighlighted,
                         simSlotNumber = simSlotNumber,
                         useShamsi = showShamsiDate,
+                        appLanguage = state.appLanguage,
                         onToggleDateFormat = onDateTapAction,
                         onLongClick = { onLongClick(message) },
                         isSelectionMode = isSelectionMode,
