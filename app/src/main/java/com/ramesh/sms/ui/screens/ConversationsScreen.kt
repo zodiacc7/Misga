@@ -131,6 +131,7 @@ import androidx.compose.ui.semantics.Role
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.PillShape
+import com.ramesh.sms.theme.SquircleCardShape
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
