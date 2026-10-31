@@ -250,22 +250,8 @@ class ConversationsViewModel(
             }
 
             try {
-                // Always fetch fresh from the provider when force=true so new messages
-                // show up immediately without needing to exit and re-enter the app.
-                val threads = if (force) {
-                    repository.getThreads()
-                } else {
-                    val cached = try {
-                        repository.getCachedThreads()
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                    if (cached.isNotEmpty() && _uiState.value.threads.isEmpty()) {
-                        cached
-                    } else {
-                        repository.getThreads()
-                    }
-                }
+                // Always fetch fresh from the provider so messages show up immediately.
+                val threads = repository.getThreads()
                 val currentQuery = _uiState.value.searchQuery.trim()
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
