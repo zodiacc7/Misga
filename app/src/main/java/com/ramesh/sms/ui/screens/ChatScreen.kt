@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -328,7 +329,7 @@ fun ChatScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "${selectedMessageIds.size} selected",
+                            text = stringResource(R.string.chat_selected_count, selectedMessageIds.size),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -340,20 +341,72 @@ fun ChatScreen(
                     },
                     actions = {
                         if (selectedMessageIds.size == 1) {
-                            Surface(
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                modifier = Modifier.padding(end = 6.dp)
-                            ) {
-                                IconButton(
-                                    onClick = {
-                                        reactionPickerMessageId = selectedMessageIds.firstOrNull()
+                            val selectedId = selectedMessageIds.first()
+                            val activeReaction = state.messages.firstOrNull { it.id == selectedId }?.reaction
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Quick reactions right in the selection bar: tapping a message
+                                // used to hide the only react entry point behind a dialog.
+                                ReactionEmojis.take(3).forEach { emoji ->
+                                    val isActive = emoji == activeReaction
+                                    Box(
+                                        modifier = Modifier
+                                            .padding(end = 4.dp)
+                                            .size(30.dp)
+                                            .clip(CircleShape)
+                                            .background(
+                                                if (isActive) MaterialTheme.colorScheme.primaryContainer
+                                                else MaterialTheme.colorScheme.surfaceContainerHigh
+                                            )
+                                            .clickable {
+                                                viewModel.toggleReaction(selectedId, emoji)
+                                                viewModel.clearSelection()
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = emoji, fontSize = 15.sp)
                                     }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 6.dp)
+                                        .size(30.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                        .clickable { reactionPickerMessageId = selectedId },
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.AddReaction,
                                         contentDescription = stringResource(R.string.chat_react),
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                // Text is no longer selectable inside the bubble (that gesture is
+                                // the message selection now), so copying lives here.
+                                IconButton(
+                                    onClick = {
+                                        val body = state.messages.firstOrNull { it.id == selectedId }?.body
+                                        if (!body.isNullOrEmpty()) {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("message", body))
+                                            Toast.makeText(context, R.string.chat_copied, Toast.LENGTH_SHORT).show()
+                                        }
+                                        viewModel.clearSelection()
+                                    },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = stringResource(R.string.chat_copy),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }

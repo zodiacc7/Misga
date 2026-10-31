@@ -21,6 +21,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -38,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -105,10 +109,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
@@ -119,11 +125,13 @@ import androidx.compose.ui.text.SpanStyle
 import com.ramesh.sms.ChatNav
 import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
+import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.model.SearchMessageResult
 import androidx.compose.ui.semantics.Role
 import com.ramesh.sms.data.model.SenderTab
 import com.ramesh.sms.theme.AppearanceStore
 import com.ramesh.sms.theme.PillShape
+import com.ramesh.sms.theme.SquircleCardShape
 import com.ramesh.sms.ui.components.AddToTabDialog
 import com.ramesh.sms.ui.components.ContactProfileDialog
 import com.ramesh.sms.ui.components.ConversationAvatar
@@ -209,6 +217,16 @@ fun ConversationsScreen(
     }
     val swipeToDelete = AppearanceStore.current.swipeToDelete
     val undoScope = rememberCoroutineScope()
+    // Long press opens the same actions the swipe reveals, so they stay reachable on devices
+    // where the system back gesture eats edge swipes.
+    var threadOptions by remember { mutableStateOf<ConversationThread?>(null) }
+
+    // A refused provider write used to look like "the swipe does nothing"; surface it instead.
+    LaunchedEffect(state.deleteFailureTick) {
+        if (state.deleteFailureTick > 0L) {
+            Toast.makeText(context, R.string.inbox_delete_failed, Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Deleting waits five seconds so the undo bar stays usable; nothing is lost if the user
     // changes their mind.
@@ -600,13 +618,15 @@ fun ConversationsScreen(
                             ) { thread ->
                                 SwipeToDeleteContainer(
                                     enabled = swipeToDelete,
-                                    onDelete = { requestDeleteConversation(thread) }
+                                    onDelete = { requestDeleteConversation(thread) },
+                                    onMarkRead = { viewModel.clearUnreadForThread(thread.threadId) }
                                 ) {
                                     ConversationItem(
                                         thread = thread,
                                         selectedIds = NoSelectionIds,
                                         isSelectionMode = false,
-                                        simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                                        simSlotNumber = if (hasMultipleSims && state.showSimBadge) simSlotMap[thread.subId] else null,
+                                        useShamsi = state.jalaliScope == JalaliScope.EVERYWHERE,
                                         onClick = {
                                             openChat(
                                                 ChatNav(
@@ -616,7 +636,7 @@ fun ConversationsScreen(
                                                 )
                                             )
                                         },
-                                        onLongClick = {},
+                                        onLongClick = { threadOptions = thread },
                                         onAvatarClick = {
                                             activeProfileDialogInfo = ProfileDialogData(
                                                 threadId = thread.threadId,
@@ -751,6 +771,8 @@ fun ConversationsScreen(
                     isSelectionMode = isSelectionMode,
                     simSlotMap = simSlotMap,
                     hasMultipleSims = hasMultipleSims,
+                    showSimBadge = state.showSimBadge,
+                    useShamsi = state.jalaliScope == JalaliScope.EVERYWHERE,
                     onOpenChat = openChat,
                     onToggleSelect = viewModel::toggleSelectThread,
                     onEnterSelection = viewModel::enterSelectionMode,
@@ -767,6 +789,54 @@ fun ConversationsScreen(
                 )
             }
         }
+    }
+
+    threadOptions?.let { thread ->
+        val optionsTitle = senderDisplayName(thread.contactName, thread.address)
+        AlertDialog(
+            onDismissRequest = { threadOptions = null },
+            shape = SquircleCardShape,
+            title = {
+                Text(
+                    text = optionsTitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    ConversationActionRow(
+                        icon = Icons.Default.MarkChatRead,
+                        label = stringResource(R.string.inbox_mark_read)
+                    ) {
+                        threadOptions = null
+                        viewModel.clearUnreadForThread(thread.threadId)
+                    }
+                    ConversationActionRow(
+                        icon = Icons.Default.Delete,
+                        label = stringResource(R.string.inbox_delete_conversation),
+                        isDestructive = true
+                    ) {
+                        threadOptions = null
+                        requestDeleteConversation(thread)
+                    }
+                    ConversationActionRow(
+                        icon = Icons.Default.SelectAll,
+                        label = stringResource(R.string.inbox_select_messages)
+                    ) {
+                        threadOptions = null
+                        viewModel.enterSelectionMode(thread.threadId)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { threadOptions = null }) {
+                    Text(stringResource(R.string.inbox_cancel))
+                }
+            }
+        )
     }
 
     if (showBatchDeleteDialog) {
@@ -1154,6 +1224,8 @@ private fun ConversationsInboxList(
     isSelectionMode: Boolean,
     simSlotMap: Map<Int, Int> = emptyMap(),
     hasMultipleSims: Boolean = false,
+    showSimBadge: Boolean = true,
+    useShamsi: Boolean = false,
     onOpenChat: (ChatNav) -> Unit,
     onToggleSelect: (Long) -> Unit,
     onEnterSelection: (Long) -> Unit,
@@ -1174,7 +1246,8 @@ private fun ConversationsInboxList(
                 selectedIds = selectedIds,
                 isSelectionMode = isSelectionMode,
                 showAvatar = showAvatars,
-                simSlotNumber = if (hasMultipleSims) simSlotMap[thread.subId] else null,
+                simSlotNumber = if (hasMultipleSims && showSimBadge) simSlotMap[thread.subId] else null,
+                useShamsi = useShamsi,
                 onClick = {
                     if (isSelectionMode) {
                         onToggleSelect(thread.threadId)
@@ -1266,6 +1339,7 @@ private fun ConversationItem(
     onLongClick: () -> Unit,
     showAvatar: Boolean = true,
     simSlotNumber: Int? = null,
+    useShamsi: Boolean = false,
     onAvatarClick: (() -> Unit)? = null
 ) {
     val isSelected by remember(thread.threadId) {
@@ -1278,7 +1352,9 @@ private fun ConversationItem(
     } else {
         Color.Transparent
     }
-    val dateText = remember(thread.date) { SmsDateFormats.conversationList(thread.date) }
+    val dateText = remember(thread.date, useShamsi) {
+        SmsDateFormats.conversationList(thread.date, useShamsi)
+    }
     val isLastReceivedSpam = thread.isLastReceivedSpam
 
     Row(
@@ -1370,9 +1446,10 @@ private fun ConversationItem(
                     fontWeight = if (thread.unreadCount > 0 && !thread.isUnreadSpam) FontWeight.ExtraBold else FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false)
+                    modifier = Modifier.weight(1f)
                 )
-                Spacer(modifier = Modifier.weight(1f))
+                // The timestamp block owns the end of the row, so it stays flush with the edge in
+                // both LTR and RTL layouts.
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(start = 8.dp)
@@ -1634,25 +1711,38 @@ private data class ProfileDialogData(
 )
 
 /**
- * Reveals a delete button when a conversation row is dragged sideways. The row itself never
- * deletes anything: the user has to tap the bin, which keeps the gesture reversible.
+ * Reveals an action button when a conversation row is dragged sideways: dragging towards one
+ * side offers "mark as read", dragging towards the other offers "delete". Nothing is applied
+ * until the button itself is tapped, so a mistimed gesture never destroys anything.
  */
 @Composable
 private fun SwipeToDeleteContainer(
     enabled: Boolean,
     onDelete: () -> Unit,
+    onMarkRead: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
     val revealPx = with(LocalDensity.current) { 84.dp.toPx() }
-    var offset by remember { mutableFloatStateOf(0f) }
+    val layoutDirection = LocalLayoutDirection.current
+    val isRtl = layoutDirection == LayoutDirection.Rtl
+    var targetOffset by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     val animatedOffset by animateFloat(
-        targetValue = offset,
-        animationSpec = tween(durationMillis = if (isDragging) 0 else 160),
+        targetValue = targetOffset,
+        animationSpec = tween(durationMillis = if (isDragging) 0 else 170),
         label = "swipeReveal"
     )
-    val revealed = animatedOffset != 0f
+    val revealed = abs(animatedOffset) > 1f
+    // Negative offset slides the row towards the physical left, so the exposed strip sits on the
+    // physical right. Alignment.End/Start are direction aware, therefore the mapping flips in RTL.
+    val showDelete = animatedOffset < 0f
+    val actionAlignment = when {
+        showDelete && isRtl -> Alignment.CenterStart
+        showDelete -> Alignment.CenterEnd
+        isRtl -> Alignment.CenterEnd
+        else -> Alignment.CenterStart
+    }
 
     Box(modifier.fillMaxWidth()) {
         if (revealed) {
@@ -1660,26 +1750,39 @@ private fun SwipeToDeleteContainer(
                 modifier = Modifier
                     .matchParentSize()
                     .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 12.dp),
-                contentAlignment = if (animatedOffset > 0) Alignment.CenterStart else Alignment.CenterEnd
+                    .padding(horizontal = 10.dp)
+                    .clickable { targetOffset = 0f },
+                contentAlignment = actionAlignment
             ) {
+                val container = if (showDelete) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                }
+                val onContainer = if (showDelete) {
+                    MaterialTheme.colorScheme.onErrorContainer
+                } else {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                }
                 Surface(
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                    color = container,
+                    contentColor = onContainer,
                     modifier = Modifier.size(52.dp)
                 ) {
                     IconButton(
                         onClick = {
-                            offset = 0f
-                            onDelete()
+                            targetOffset = 0f
+                            if (showDelete) onDelete() else onMarkRead()
                         },
                         modifier = Modifier.size(52.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.inbox_delete_conversation),
-                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                            imageVector = if (showDelete) Icons.Default.Delete else Icons.Default.MarkChatRead,
+                            contentDescription = stringResource(
+                                if (showDelete) R.string.inbox_delete_conversation else R.string.inbox_mark_read
+                            ),
+                            tint = onContainer,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -1691,28 +1794,22 @@ private fun SwipeToDeleteContainer(
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { translationX = animatedOffset }
-                .pointerInput(enabled) {
-                    if (!enabled) return@pointerInput
-                    detectHorizontalDragGestures(
-                        onDragStart = { isDragging = true },
-                        onDragEnd = {
-                            isDragging = false
-                            offset = when {
-                                abs(offset) < revealPx / 2f -> 0f
-                                offset > 0f -> revealPx
-                                else -> -revealPx
-                            }
-                        },
-                        onDragCancel = {
-                            isDragging = false
-                            offset = 0f
-                        },
-                        onHorizontalDrag = { change, dragAmount ->
-                            change.consume()
-                            offset = (offset + dragAmount).coerceIn(-revealPx, revealPx)
+                .draggable(
+                    state = rememberDraggableState { delta ->
+                        targetOffset = (targetOffset + delta).coerceIn(-revealPx, revealPx)
+                    },
+                    enabled = enabled,
+                    orientation = Orientation.Horizontal,
+                    onDragStarted = { isDragging = true },
+                    onDragStopped = {
+                        isDragging = false
+                        targetOffset = when {
+                            abs(targetOffset) < revealPx / 2f -> 0f
+                            targetOffset > 0f -> revealPx
+                            else -> -revealPx
                         }
-                    )
-                }
+                    }
+                )
         ) {
             Box(
                 modifier = Modifier
@@ -1722,5 +1819,37 @@ private fun SwipeToDeleteContainer(
                 content()
             }
         }
+    }
+}
+
+/** One tappable row inside the conversation long-press sheet. */
+@Composable
+private fun ConversationActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    isDestructive: Boolean = false,
+    onClick: () -> Unit
+) {
+    val tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+        )
     }
 }

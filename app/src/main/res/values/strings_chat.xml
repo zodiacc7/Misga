@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="chat_cancel_selection">Cancel selection</string>
+    <string name="chat_selected_count">%1$d selected</string>
     <string name="chat_react">React to message</string>
     <string name="chat_message_info">Message info</string>
     <string name="chat_delete_selected">Delete selected</string>

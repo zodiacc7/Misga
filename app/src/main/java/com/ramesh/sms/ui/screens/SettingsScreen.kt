@@ -66,6 +66,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
 import com.ramesh.sms.R
+import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.engine.NotificationHelper
@@ -97,6 +98,7 @@ import com.ramesh.sms.ui.components.autoDeleteLimitForProgress
 import com.ramesh.sms.ui.components.progressForAutoDeleteLimit
 import com.ramesh.sms.ui.components.SettingsSwitchRow
 import com.ramesh.sms.ui.viewmodel.ConversationsViewModel
+import kotlin.math.roundToInt
 
 private val ToneDotColors: List<Pair<String, androidx.compose.ui.graphics.Color?>> =
     BubbleTone.values().map { tone ->
@@ -422,20 +424,44 @@ fun SettingsScreen(
                         onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
                         showDivider = true
                     )
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_jalali_scope),
+                        subtitle = stringResource(R.string.settings_jalali_scope_sub),
+                        options = listOf(
+                            stringResource(R.string.settings_jalali_chat_only),
+                            stringResource(R.string.settings_jalali_everywhere)
+                        ),
+                        selectedIndex = if (inboxState.jalaliScope == JalaliScope.EVERYWHERE) 1 else 0,
+                        onSelect = { index ->
+                            inboxViewModel.setJalaliScope(
+                                if (index == 1) JalaliScope.EVERYWHERE else JalaliScope.CHAT_ONLY
+                            )
+                        },
+                        showDivider = true
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Default.SimCard,
+                        title = stringResource(R.string.settings_sim_badge),
+                        subtitle = stringResource(R.string.settings_sim_badge_sub),
+                        checked = inboxState.showSimBadge,
+                        onCheckedChange = { enabled -> inboxViewModel.setShowSimBadgeEnabled(enabled) },
+                        showDivider = true
+                    )
+                    val delaySeconds = sendDelay.roundToInt().coerceIn(0, 9)
                     SettingsSliderRow(
                         title = stringResource(R.string.settings_send_delay),
                         subtitle = stringResource(R.string.settings_send_delay_sub),
                         value = sendDelay,
                         valueRange = 0f..9f,
                         steps = 8,
-                        valueLabel = if (sendDelay < 0.5f) {
+                        valueLabel = if (delaySeconds == 0) {
                             stringResource(R.string.settings_off)
                         } else {
-                            stringResource(R.string.settings_seconds_value, sendDelay.toInt())
+                            stringResource(R.string.settings_seconds_value, delaySeconds)
                         },
-                        onValueChange = { sendDelay = it },
+                        onValueChange = { sendDelay = it.roundToInt().toFloat() },
                         onValueChangeFinished = {
-                            inboxViewModel.setSendDelaySeconds(sendDelay.toInt().coerceIn(0, 9))
+                            inboxViewModel.setSendDelaySeconds(delaySeconds)
                         }
                     )
                     SettingsChoiceRow(

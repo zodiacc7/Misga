@@ -64,6 +64,7 @@ import com.ramesh.sms.theme.SpamWarningOnLight
 import com.ramesh.sms.theme.TagShape
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.contentAware
+import com.ramesh.sms.ui.util.forMessageBody
 
 @Composable
 fun SpamMessagePill(
@@ -219,7 +220,7 @@ fun SpamMessagePill(
                         SelectionContainer {
                             Text(
                                 text = message.body,
-                                style = MaterialTheme.typography.bodyMedium.contentAware(),
+                                style = MaterialTheme.typography.bodyMedium.contentAware().forMessageBody(message.body),
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 21.sp,
                                 modifier = Modifier.padding(12.dp)

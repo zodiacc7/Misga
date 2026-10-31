@@ -43,6 +43,12 @@
     <string name="settings_counter_sub">Show the SMS segment counter above the input bar</string>
     <string name="settings_date_tap">Tap date to switch calendar</string>
     <string name="settings_date_tap_sub">Toggle standard and Shamsi dates from a message timestamp</string>
+    <string name="settings_jalali_scope">Jalali calendar</string>
+    <string name="settings_jalali_scope_sub">Choose where Persian dates are used</string>
+    <string name="settings_jalali_chat_only">Only inside chats</string>
+    <string name="settings_jalali_everywhere">Everywhere</string>
+    <string name="settings_sim_badge">Show SIM badge</string>
+    <string name="settings_sim_badge_sub">Show the SIM slot next to each conversation when the phone has two SIMs</string>
     <string name="settings_send_delay">Send delay</string>
     <string name="settings_send_delay_sub">Hold each message for a moment so you can cancel a wrong send</string>
     <string name="settings_off">Off</string>

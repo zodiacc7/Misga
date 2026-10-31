@@ -26,19 +26,31 @@ object SmsDateFormats {
     private val yearMonthDayClock: DateTimeFormatter =
         DateTimeFormatter.ofPattern("yyyy MMMM d, HH:mm", Locale.getDefault())
 
+    /** Jalali month names are always Persian: the calendar itself is Persian by definition. */
     private val SHAMSI_MONTH_NAMES = arrayOf(
-        "Farvardin",
-        "Ordibehesht",
-        "Khordad",
-        "Tir",
-        "Mordad",
-        "Shahrivar",
-        "Mehr",
-        "Aban",
-        "Azar",
-        "Dey",
-        "Bahman",
-        "Esfand"
+        "فروردین",
+        "اردیبهشت",
+        "خرداد",
+        "تیر",
+        "مرداد",
+        "شهریور",
+        "مهر",
+        "آبان",
+        "آذر",
+        "دی",
+        "بهمن",
+        "اسفند"
+    )
+
+    /** Indexed by [java.time.DayOfWeek.value] - 1, so index 0 is Monday. */
+    private val PERSIAN_WEEKDAYS = arrayOf(
+        "دوشنبه",
+        "سه‌شنبه",
+        "چهارشنبه",
+        "پنجشنبه",
+        "جمعه",
+        "شنبه",
+        "یکشنبه"
     )
 
     data class JalaliDate(val year: Int, val month: Int, val day: Int)
@@ -120,11 +132,12 @@ object SmsDateFormats {
         val nowJDate = toJalali(currentDate.year, currentDate.monthValue, currentDate.dayOfMonth)
 
         val monthName = SHAMSI_MONTH_NAMES.getOrElse(jDate.month - 1) { "" }
+        val day = toPersianDigits(jDate.day)
 
         return if (jDate.year == nowJDate.year) {
-            "${jDate.day} $monthName"
+            "$day $monthName"
         } else {
-            "${jDate.day} $monthName ${jDate.year}"
+            "$day $monthName ${toPersianDigits(jDate.year)}"
         }
     }
 
@@ -141,8 +154,8 @@ object SmsDateFormats {
             val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
             val jDate = toJalali(messageDate.year, messageDate.monthValue, messageDate.dayOfMonth)
             val monthName = SHAMSI_MONTH_NAMES.getOrElse(jDate.month - 1) { "" }
-            val timePart = clock(timestamp)
-            "${jDate.year} $monthName ${jDate.day}, $timePart"
+            val timePart = toPersianDigits(clock(timestamp))
+            "${toPersianDigits(jDate.year)} $monthName ${toPersianDigits(jDate.day)}، $timePart"
         } else {
             Instant.ofEpochMilli(timestamp).atZone(zone).format(yearMonthDayClock)
         }
@@ -170,21 +183,36 @@ object SmsDateFormats {
     ): String {
         val messageDate = Instant.ofEpochMilli(timestamp).atZone(zone).toLocalDate()
         val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val todayLabel = if (useShamsi) "امروز" else "Today"
+        val yesterdayLabel = if (useShamsi) "دیروز" else "Yesterday"
         return when {
-            messageDate == today -> "Today"
-            messageDate == today.minusDays(1) -> "Yesterday"
+            messageDate == today -> todayLabel
+            messageDate == today.minusDays(1) -> yesterdayLabel
             else -> formatDate(timestamp, useShamsi, now)
         }
     }
 
-    fun conversationList(timestamp: Long, now: Long = System.currentTimeMillis()): String {
+    fun conversationList(
+        timestamp: Long,
+        useShamsi: Boolean = false,
+        now: Long = System.currentTimeMillis()
+    ): String {
         val diff = now - timestamp
         val oneDay = 24 * 60 * 60 * 1000L
         val local = Instant.ofEpochMilli(timestamp).atZone(zone)
         return when {
-            diff < oneDay -> local.toLocalTime().format(clock)
-            diff < 7 * oneDay -> local.toLocalDate().format(weekday)
-            else -> local.toLocalDate().format(monthDay)
+            diff < oneDay -> {
+                val text = local.toLocalTime().format(clock)
+                if (useShamsi) toPersianDigits(text) else text
+            }
+            diff < 7 * oneDay -> {
+                if (useShamsi) {
+                    PERSIAN_WEEKDAYS.getOrElse(local.dayOfWeek.value - 1) { "" }
+                } else {
+                    local.toLocalDate().format(weekday)
+                }
+            }
+            else -> if (useShamsi) shamsiDate(timestamp, now) else local.toLocalDate().format(monthDay)
         }
     }
 }

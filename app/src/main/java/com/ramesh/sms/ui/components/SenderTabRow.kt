@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -50,18 +51,13 @@ import androidx.compose.ui.zIndex
 import com.ramesh.sms.R
 import com.ramesh.sms.data.model.ConversationThread
 import com.ramesh.sms.data.model.SenderTab
-import com.ramesh.sms.data.util.PhoneNumberKeys
+import com.ramesh.sms.data.util.threadMatchesTab
+import com.ramesh.sms.data.util.visibleThreadsForTab
 import com.ramesh.sms.theme.PillShape
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-fun isThreadInTab(thread: ConversationThread, tab: SenderTab): Boolean {
-    if (tab.senderAddresses.isEmpty()) return false
-    val canonical = PhoneNumberKeys.canonical(thread.address)
-    if (canonical in tab.senderAddresses) return true
-    val keys = PhoneNumberKeys.keys(thread.address)
-    return keys.any { it in tab.senderAddresses }
-}
+fun isThreadInTab(thread: ConversationThread, tab: SenderTab): Boolean = threadMatchesTab(thread, tab)
 
 /** Id of the "All" pseudo tab while the strip is being reordered (matches ALL_TAB_SENTINEL). */
 const val ALL_TAB_ID = -1L
@@ -105,6 +101,23 @@ fun SenderTabRow(
         currentTabs.addAll(entries)
     }
 
+    // Bring the selected tab into view: after a restart (or after "All" was moved) the strip
+    // could open scrolled to the far side and the active tab was simply not visible.
+    LaunchedEffect(selectedTabId, currentTabs.size, allTabIndex) {
+        if (currentTabs.isEmpty()) return@LaunchedEffect
+        val index = currentTabs.indexOfFirst { entry ->
+            if (selectedTabId == null) entry.id == ALL_TAB_ID else entry.id == selectedTabId
+        }
+        if (index < 0) return@LaunchedEffect
+        val info = lazyListState.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+        val fullyVisible = item != null && item.offset >= info.viewportStartOffset &&
+            item.offset + item.size <= info.viewportEndOffset
+        if (!fullyVisible) {
+            runCatching { lazyListState.animateScrollToItem(index) }
+        }
+    }
+
     LazyRow(
         state = lazyListState,
         modifier = modifier,
@@ -124,7 +137,19 @@ fun SenderTabRow(
                 targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 label = "tabText_${tab.id}"
             )
-            val count = if (isAll) threads.size else threads.count { isThreadInTab(it, tab) }
+            // The badge means one thing only: unread messages first. When a tab has nothing
+            // unread it falls back to the muted conversation count, so the two can never be
+            // confused with each other.
+            val tabThreads = visibleThreadsForTab(threads, if (isAll) null else tab)
+            val unreadCount = tabThreads.sumOf { it.unreadCount }
+            val hasUnread = unreadCount > 0
+            val count = if (hasUnread) unreadCount else tabThreads.size
+            val badgeColor = when {
+                hasUnread -> MaterialTheme.colorScheme.error
+                isSelected -> contentColor.copy(alpha = 0.22f)
+                else -> MaterialTheme.colorScheme.surfaceContainerHighest
+            }
+            val badgeTextColor = if (hasUnread) MaterialTheme.colorScheme.onError else contentColor
 
             Surface(
                 shape = PillShape,
@@ -258,13 +283,13 @@ fun SenderTabRow(
                     Spacer(modifier = Modifier.width(6.dp))
                     Surface(
                         shape = PillShape,
-                        color = if (isSelected) contentColor.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceContainerHighest
+                        color = badgeColor
                     ) {
                         Text(
                             text = count.toString(),
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = contentColor,
+                            color = badgeTextColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                             fontSize = 11.sp
                         )

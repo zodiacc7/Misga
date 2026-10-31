@@ -1,9 +1,17 @@
 package com.ramesh.sms
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -24,6 +32,8 @@ fun MainNavigation(
 ) {
     val backStack = rememberNavBackStack(ConversationsNav)
     val conversationsViewModel: ConversationsViewModel = viewModel()
+    // Forward means "towards the end of the line", which is the left in RTL layouts.
+    val forwardSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
 
     LaunchedEffect(pendingChatNav) {
         if (pendingChatNav != null) {
@@ -49,6 +59,30 @@ fun MainNavigation(
     NavDisplay(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
+        // Both directions are exact mirrors of each other: the incoming screen travels the full
+        // width and the outgoing one travels the full width in the opposite direction. The
+        // earlier version moved the outgoing screen by a quarter only, which made entering a
+        // chat look different from leaving it.
+        transitionSpec = {
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                (full * forwardSign).toInt()
+            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
+                .togetherWith(
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                        (-full * forwardSign).toInt()
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
+                )
+        },
+        popTransitionSpec = {
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                (-full * forwardSign).toInt()
+            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
+                .togetherWith(
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                        (full * forwardSign).toInt()
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
+                )
+        },
         entryProvider = entryProvider {
             entry<ConversationsNav> {
                 ConversationsScreen(
@@ -103,3 +137,6 @@ fun MainNavigation(
         }
     )
 }
+
+/** Duration of the screen change animation, kept short so it never feels sluggish. */
+private const val PageTransitionMillis = 240
