@@ -45,6 +45,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -334,7 +335,7 @@ fun ConversationsScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = onNavigateToCompose,
-                    icon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    content = { Icon(Icons.Default.Edit, contentDescription = null) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 )
