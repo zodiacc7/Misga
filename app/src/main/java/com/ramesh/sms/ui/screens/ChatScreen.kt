@@ -1056,7 +1056,7 @@ private fun ChatMessageList(
                 look.showDateHeaders &&
                 (olderMessage == null || !SmsDateFormats.isSameDay(olderMessage.date, message.date))
             ) {
-                SmsDateFormats.dayHeader(message.date, showShamsiDate, state.appLanguage)
+                SmsDateFormats.dayHeader(message.date, showShamsiDate, appLanguage)
             } else {
                 null
             }
@@ -1081,7 +1081,7 @@ private fun ChatMessageList(
                         isHighlighted = isHighlighted,
                         simSlotNumber = simSlotNumber,
                         useShamsi = showShamsiDate,
-                        appLanguage = state.appLanguage,
+                        appLanguage = appLanguage,
                         onToggleDateFormat = onDateTapAction,
                         onRevealToggle = { revealed -> onRevealToggle(message.id, revealed) },
                         onMarkNotSpam = { onMarkNotSpam(message.id) },
@@ -1111,7 +1111,7 @@ private fun ChatMessageList(
                         isHighlighted = isHighlighted,
                         simSlotNumber = simSlotNumber,
                         useShamsi = showShamsiDate,
-                        appLanguage = state.appLanguage,
+                        appLanguage = appLanguage,
                         onToggleDateFormat = onDateTapAction,
                         onLongClick = { onLongClick(message) },
                         isSelectionMode = isSelectionMode,
