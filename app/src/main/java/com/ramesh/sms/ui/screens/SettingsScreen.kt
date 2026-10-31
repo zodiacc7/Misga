@@ -66,6 +66,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.app.Activity
 import com.ramesh.sms.R
+import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.engine.NotificationHelper
@@ -421,6 +422,29 @@ fun SettingsScreen(
                         subtitle = stringResource(R.string.settings_date_tap_sub),
                         checked = inboxState.enableDateTapShamsiToggle,
                         onCheckedChange = { enabled -> inboxViewModel.setDateTapShamsiEnabled(enabled) },
+                        showDivider = true
+                    )
+                    SettingsChoiceRow(
+                        title = stringResource(R.string.settings_jalali_scope),
+                        subtitle = stringResource(R.string.settings_jalali_scope_sub),
+                        options = listOf(
+                            stringResource(R.string.settings_jalali_chat_only),
+                            stringResource(R.string.settings_jalali_everywhere)
+                        ),
+                        selectedIndex = if (inboxState.jalaliScope == JalaliScope.EVERYWHERE) 1 else 0,
+                        onSelect = { index ->
+                            inboxViewModel.setJalaliScope(
+                                if (index == 1) JalaliScope.EVERYWHERE else JalaliScope.CHAT_ONLY
+                            )
+                        },
+                        showDivider = true
+                    )
+                    SettingsSwitchRow(
+                        icon = Icons.Default.SimCard,
+                        title = stringResource(R.string.settings_sim_badge),
+                        subtitle = stringResource(R.string.settings_sim_badge_sub),
+                        checked = inboxState.showSimBadge,
+                        onCheckedChange = { enabled -> inboxViewModel.setShowSimBadgeEnabled(enabled) },
                         showDivider = true
                     )
                     val delaySeconds = sendDelay.roundToInt().coerceIn(0, 9)

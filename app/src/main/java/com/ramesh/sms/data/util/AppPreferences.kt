@@ -29,6 +29,12 @@ interface UserPreferences {
 
     /** UI language; [AppLanguage.SYSTEM] follows the device. */
     var appLanguage: AppLanguage
+
+    /** Show the SIM slot badge next to conversations when the phone has more than one SIM. */
+    var showSimBadge: Boolean
+
+    /** Whether the Jalali calendar is used only inside chats or everywhere in the app. */
+    var jalaliScope: JalaliScope
 }
 
 class AppPreferences(
@@ -117,6 +123,18 @@ class AppPreferences(
             prefs.edit().putString(KEY_APP_LANGUAGE, value.name).apply()
         }
 
+    override var showSimBadge: Boolean
+        get() = prefs.getBoolean(KEY_SHOW_SIM_BADGE, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_SHOW_SIM_BADGE, value).apply()
+        }
+
+    override var jalaliScope: JalaliScope
+        get() = JalaliScope.fromName(prefs.getString(KEY_JALALI_SCOPE, null))
+        set(value) {
+            prefs.edit().putString(KEY_JALALI_SCOPE, value.name).apply()
+        }
+
     companion object {
         const val PREFS_NAME = "ramesh_preferences"
         const val KEY_SHOW_CONTACTS_ONLY = "show_contacts_only"
@@ -132,5 +150,7 @@ class AppPreferences(
         const val KEY_AUTO_DELETE_LIMIT = "auto_delete_limit"
         const val KEY_LOCK_SCREEN_PRIVACY = "lock_screen_privacy"
         const val KEY_APP_LANGUAGE = "app_language"
+        const val KEY_SHOW_SIM_BADGE = "show_sim_badge"
+        const val KEY_JALALI_SCOPE = "jalali_scope"
     }
 }

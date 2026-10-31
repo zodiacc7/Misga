@@ -1,6 +1,8 @@
 package com.ramesh.sms.ui.util
 
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 
 /**
  * Kept for call-site compatibility while the UI learns about RTL layouts.
@@ -14,3 +16,32 @@ import androidx.compose.ui.text.TextStyle
  */
 @Suppress("UNUSED_PARAMETER")
 fun TextStyle.contentAware(): TextStyle = this
+
+/**
+ * Message bodies are the one place where the text itself decides the alignment: a Persian
+ * message must hug the right edge of the bubble even when the interface is in English, and an
+ * English message must hug the left edge even in a Persian interface. Only the paragraph of the
+ * body is affected — never the layout of the surrounding row.
+ */
+fun TextStyle.forMessageBody(text: String): TextStyle {
+    return if (isRtlParagraph(text)) {
+        copy(textAlign = TextAlign.Right, textDirection = TextDirection.Rtl)
+    } else if (text.isBlank()) {
+        this
+    } else {
+        copy(textAlign = TextAlign.Left, textDirection = TextDirection.Ltr)
+    }
+}
+
+/** True when the first strong character of the string belongs to an RTL script. */
+fun isRtlParagraph(text: String): Boolean {
+    for (ch in text) {
+        when {
+            ch in '\u0590'..'\u08FF' || ch in '\uFB1D'..'\uFDFF' || ch in '\uFE70'..'\uFEFF' -> {
+                return true
+            }
+            ch in 'A'..'Z' || ch in 'a'..'z' || ch in '\u00C0'..'\u024F' -> return false
+        }
+    }
+    return false
+}

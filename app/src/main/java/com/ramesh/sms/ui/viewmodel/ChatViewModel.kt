@@ -25,6 +25,7 @@ import com.ramesh.sms.data.model.SimInfo
 import com.ramesh.sms.data.model.SmsMessage
 import com.ramesh.sms.data.repository.SendSmsResult
 import com.ramesh.sms.data.repository.SmsRepository
+import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.util.AppPreferences
 import com.ramesh.sms.data.util.UserPreferences
 import kotlinx.coroutines.CancellationException
@@ -91,7 +92,8 @@ class ChatViewModel(
             threadId = initialThreadId,
             address = initialAddress,
             contactName = initialContactName,
-            showShamsiDate = userPreferences.showShamsiDate,
+            showShamsiDate = userPreferences.jalaliScope == JalaliScope.EVERYWHERE ||
+                userPreferences.showShamsiDate,
             enableDateTapShamsiToggle = userPreferences.enableDateTapShamsiToggle
         )
     )
@@ -579,7 +581,8 @@ class ChatViewModel(
         isScreenResumed = resumed
         if (resumed) {
             _uiState.value = _uiState.value.copy(
-                showShamsiDate = userPreferences.showShamsiDate,
+                showShamsiDate = userPreferences.jalaliScope == JalaliScope.EVERYWHERE ||
+                userPreferences.showShamsiDate,
                 enableDateTapShamsiToggle = userPreferences.enableDateTapShamsiToggle
             )
             loadContactDetails()

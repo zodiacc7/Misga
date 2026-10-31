@@ -43,6 +43,12 @@
     <string name="settings_counter_sub">نمایش شمارندهٔ بخش‌های پیام بالای کادر نوشتن</string>
     <string name="settings_date_tap">لمس تاریخ برای تغییر تقویم</string>
     <string name="settings_date_tap_sub">تغییر بین تاریخ میلادی و شمسی با لمس زمان پیام</string>
+    <string name="settings_jalali_scope">تقویم جلالی</string>
+    <string name="settings_jalali_scope_sub">مشخص کنید تاریخ فارسی کجا نمایش داده شود</string>
+    <string name="settings_jalali_chat_only">فقط داخل گفتگو</string>
+    <string name="settings_jalali_everywhere">همه جا</string>
+    <string name="settings_sim_badge">نمایش نشان سیم‌کارت</string>
+    <string name="settings_sim_badge_sub">شمارهٔ سیم‌کارت کنار هر گفتگو نمایش داده شود (وقتی دو سیم‌کارت دارید)</string>
     <string name="settings_send_delay">تأخیر در ارسال</string>
     <string name="settings_send_delay_sub">هر پیام کمی نگه داشته می‌شود تا ارسال اشتباه قابل لغو باشد</string>
     <string name="settings_off">خاموش</string>

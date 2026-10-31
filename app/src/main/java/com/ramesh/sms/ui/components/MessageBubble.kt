@@ -2,6 +2,9 @@ package com.ramesh.sms.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,7 +49,9 @@ import com.ramesh.sms.theme.chatBubbleShape
 import com.ramesh.sms.theme.bubbleContent
 import com.ramesh.sms.ui.util.SmsDateFormats
 import com.ramesh.sms.ui.util.contentAware
+import com.ramesh.sms.ui.util.forMessageBody
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubble(
     message: SmsMessage,
@@ -147,16 +152,18 @@ fun MessageBubble(
                 shadowElevation = 0.dp,
                 modifier = Modifier
                     .widthIn(min = 80.dp, max = maxBubbleWidth)
-                    .pointerInput(message.id) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(PointerEventPass.Initial)
-                                if (event.type == PointerEventType.Press) {
-                                    onBubbleTouched()
-                                }
-                            }
-                        }
-                    }
+                    // The bubble itself has to take the long press: it used to be handled only by
+                    // the empty space next to it (and by the text selection container), which is
+                    // why selecting a message only worked by accident.
+                    .combinedClickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {
+                            onBubbleTouched()
+                            if (isSelectionMode) onToggleSelect()
+                        },
+                        onLongClick = onLongClick
+                    )
             ) {
                 BubbleContent(
                     message = message,
@@ -195,6 +202,7 @@ private fun BubbleContent(
     val scale = look.chatFontSize.scale
     val bodyStyle = MaterialTheme.typography.bodyLarge
         .contentAware()
+        .forMessageBody(message.body)
         .copy(fontSize = (16f * scale).sp, lineHeight = (23f * scale).sp)
 
     Column(
@@ -213,13 +221,7 @@ private fun BubbleContent(
                 letterSpacing = 0.2.sp
             )
         }
-        if (selectable) {
-            key(selectionResetKey) {
-                SelectionContainer { bodyText() }
-            }
-        } else {
-            bodyText()
-        }
+        bodyText()
         val reaction = message.reaction
         if (!reaction.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(3.dp))

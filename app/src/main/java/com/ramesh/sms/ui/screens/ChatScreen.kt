@@ -386,6 +386,33 @@ fun ChatScreen(
                             Surface(
                                 shape = CircleShape,
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                modifier = Modifier.padding(end = 4.dp)
+                            ) {
+                                // Text is no longer selectable inside the bubble (that gesture is
+                                // the message selection now), so copying lives here.
+                                IconButton(
+                                    onClick = {
+                                        val body = state.messages.firstOrNull { it.id == selectedId }?.body
+                                        if (!body.isNullOrEmpty()) {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            clipboard.setPrimaryClip(ClipData.newPlainText("message", body))
+                                            Toast.makeText(context, R.string.chat_copied, Toast.LENGTH_SHORT).show()
+                                        }
+                                        viewModel.clearSelection()
+                                    },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = stringResource(R.string.chat_copy),
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 modifier = Modifier.padding(end = 6.dp)
                             ) {
                                 IconButton(onClick = onShowInfoForSelected) {

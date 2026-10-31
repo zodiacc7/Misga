@@ -24,9 +24,11 @@ import com.ramesh.sms.data.model.SimInfo
 import com.ramesh.sms.data.repository.SmsRepository
 import com.ramesh.sms.data.util.AppLanguage
 import com.ramesh.sms.data.util.AppPreferences
+import com.ramesh.sms.data.util.JalaliScope
 import com.ramesh.sms.data.util.LockScreenPrivacy
 import com.ramesh.sms.data.util.PhoneNumberKeys
 import com.ramesh.sms.data.util.UserPreferences
+import com.ramesh.sms.data.util.threadMatchesTab
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -61,6 +63,10 @@ data class ConversationsUiState(
     val autoDeleteLimit: Int = 0,
     val lockScreenPrivacy: LockScreenPrivacy = LockScreenPrivacy.FULL,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
+    /** Show a SIM slot badge next to each conversation (only meaningful with 2+ SIMs). */
+    val showSimBadge: Boolean = true,
+    /** Jalali calendar scope: inside chats only, or everywhere. */
+    val jalaliScope: JalaliScope = JalaliScope.CHAT_ONLY,
     /** Position of the "All" pseudo tab inside the tab strip. */
     val allTabIndex: Int = 0,
     /** Conversations waiting out the undo window before they are really deleted. */
@@ -108,7 +114,9 @@ class ConversationsViewModel(
             autoDeleteLimit = userPreferences.autoDeleteLimit,
             lockScreenPrivacy = userPreferences.lockScreenPrivacy,
             appLanguage = userPreferences.appLanguage,
-            allTabIndex = userPreferences.allTabIndex
+            allTabIndex = userPreferences.allTabIndex,
+            showSimBadge = userPreferences.showSimBadge,
+            jalaliScope = userPreferences.jalaliScope
         )
     )
     val uiState: StateFlow<ConversationsUiState> = _uiState.asStateFlow()
@@ -168,7 +176,9 @@ class ConversationsViewModel(
             autoDeleteLimit = userPreferences.autoDeleteLimit,
             lockScreenPrivacy = userPreferences.lockScreenPrivacy,
             appLanguage = userPreferences.appLanguage,
-            allTabIndex = userPreferences.allTabIndex
+            allTabIndex = userPreferences.allTabIndex,
+            showSimBadge = userPreferences.showSimBadge,
+            jalaliScope = userPreferences.jalaliScope
         )
         repository.invalidateLookupCaches()
         checkDefaultSmsStatus()
@@ -340,33 +350,6 @@ class ConversationsViewModel(
         super.onCleared()
     }
 
-    private fun threadMatchesTab(thread: ConversationThread, tab: SenderTab): Boolean {
-        val hasSenders = tab.senderAddresses.isNotEmpty()
-        if (!hasSenders && !tab.hasContentFilter) return false
-
-        if (hasSenders) {
-            val canonical = PhoneNumberKeys.canonical(thread.address)
-            val inSenders = canonical in tab.senderAddresses ||
-                PhoneNumberKeys.keys(thread.address).any { it in tab.senderAddresses }
-            if (!inSenders) return false
-        }
-
-        // Spam state: the two flags cancel each other out (no restriction).
-        val wantsSpam = tab.spamOnly && !tab.nonSpamOnly
-        val wantsNonSpam = tab.nonSpamOnly && !tab.spamOnly
-        val isSpamThread = thread.isLastReceivedSpam
-        if (wantsSpam && !isSpamThread) return false
-        if (wantsNonSpam && isSpamThread) return false
-
-        // Contact state: same rule.
-        val wantsContacts = tab.contactsOnly && !tab.nonContactsOnly
-        val wantsNonContacts = tab.nonContactsOnly && !tab.contactsOnly
-        if (wantsContacts && !thread.isContact) return false
-        if (wantsNonContacts && thread.isContact) return false
-
-        return true
-    }
-
     private fun filterThreads(
         threads: List<ConversationThread>,
         query: String,
@@ -509,6 +492,16 @@ class ConversationsViewModel(
                 showSimFilter = current.showSimFilter
             )
         )
+    }
+
+    fun setShowSimBadgeEnabled(enabled: Boolean) {
+        userPreferences.showSimBadge = enabled
+        _uiState.value = _uiState.value.copy(showSimBadge = enabled)
+    }
+
+    fun setJalaliScope(scope: JalaliScope) {
+        userPreferences.jalaliScope = scope
+        _uiState.value = _uiState.value.copy(jalaliScope = scope)
     }
 
     fun setShowSimFilterEnabled(enabled: Boolean) {

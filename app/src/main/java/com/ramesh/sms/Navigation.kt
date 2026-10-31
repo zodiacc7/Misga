@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -30,6 +32,8 @@ fun MainNavigation(
 ) {
     val backStack = rememberNavBackStack(ConversationsNav)
     val conversationsViewModel: ConversationsViewModel = viewModel()
+    // Forward means "towards the end of the line", which is the left in RTL layouts.
+    val forwardSign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1f else 1f
 
     LaunchedEffect(pendingChatNav) {
         if (pendingChatNav != null) {
@@ -55,22 +59,28 @@ fun MainNavigation(
     NavDisplay(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
-        // Explicit specs for both directions: relying on the built-in default left the push and
-        // pop animations inconsistent (the screen changed instantly every other navigation).
+        // Both directions are exact mirrors of each other: the incoming screen travels the full
+        // width and the outgoing one travels the full width in the opposite direction. The
+        // earlier version moved the outgoing screen by a quarter only, which made entering a
+        // chat look different from leaving it.
         transitionSpec = {
-            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> full } +
-                fadeIn(animationSpec = tween(PageTransitionMillis / 2)))
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                (full * forwardSign).toInt()
+            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
                 .togetherWith(
-                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> -full / 4 } +
-                        fadeOut(animationSpec = tween(PageTransitionMillis / 2))
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                        (-full * forwardSign).toInt()
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
                 )
         },
         popTransitionSpec = {
-            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> -full / 4 } +
-                fadeIn(animationSpec = tween(PageTransitionMillis / 2)))
+            (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                (-full * forwardSign).toInt()
+            } + fadeIn(animationSpec = tween(PageTransitionMillis / 3)))
                 .togetherWith(
-                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full -> full } +
-                        fadeOut(animationSpec = tween(PageTransitionMillis / 2))
+                    slideOutHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
+                        (full * forwardSign).toInt()
+                    } + fadeOut(animationSpec = tween(PageTransitionMillis / 3))
                 )
         },
         entryProvider = entryProvider {

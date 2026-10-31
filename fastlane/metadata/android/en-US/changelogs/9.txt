@@ -1,0 +1,8 @@
+• Entering and leaving a screen now use the exact same slide animation.
+• Long press a conversation for Mark as read, Delete and Multi-select — the same actions the swipe reveals.
+• Long press a message to select it again; reacting and copying moved into the selection bar.
+• Tab badges now count correctly in every tab, not just All.
+• Persian messages hug the right edge of the bubble, English messages the left.
+• Conversation timestamps are flush with the edge in both languages.
+• New settings: show/hide the SIM badge, and where the Jalali calendar is used (chat only or everywhere).
+• Jalali dates are fully Persian (month names and digits), and the tab strip scrolls to the selected tab.
