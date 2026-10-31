@@ -236,7 +236,14 @@ class ConversationsViewModel(
             )
         }
 
+        if (!force && silent) {
+            val elapsed = System.currentTimeMillis() - lastLoadFinishedAt
+            if (lastLoadFinishedAt > 0L && elapsed < SILENT_LOAD_MIN_INTERVAL_MS) {
+                return
+            }
+        }
         if (loadJob?.isActive == true) {
+            if (silent && !force) return
             loadJob?.cancel()
         }
         loadJob = viewModelScope.launch {
@@ -244,13 +251,26 @@ class ConversationsViewModel(
                 isDefaultSmsApp = repository.isDefaultSmsApp()
             )
 
-            val showLoading = !silent && _uiState.value.threads.isEmpty()
-            if (showLoading) {
-                _uiState.value = _uiState.value.copy(isLoading = true)
+            val cached = try {
+                repository.getCachedThreads()
+            } catch (e: Exception) {
+                emptyList()
+            }
+            val query = _uiState.value.searchQuery.trim()
+            if (cached.isNotEmpty() && _uiState.value.threads.isEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    threads = cached,
+                    filteredThreads = filterThreads(cached, query)
+                )
+            } else {
+                val showLoading = !silent && _uiState.value.threads.isEmpty()
+                if (showLoading) {
+                    _uiState.value = _uiState.value.copy(isLoading = true)
+                }
             }
 
             try {
-                // Always fetch fresh from the provider so messages show up immediately.
                 val threads = repository.getThreads()
                 val currentQuery = _uiState.value.searchQuery.trim()
                 _uiState.value = _uiState.value.copy(
@@ -872,5 +892,6 @@ class ConversationsViewModel(
 }
 
 private const val SMS_OBSERVER_DEBOUNCE_MS = 400L
+private const val SILENT_LOAD_MIN_INTERVAL_MS = 3_000L
 private const val SEARCH_MIN_QUERY_LENGTH = 2
 private const val SMS_PERMISSION_ERROR = "SMS permission required"
