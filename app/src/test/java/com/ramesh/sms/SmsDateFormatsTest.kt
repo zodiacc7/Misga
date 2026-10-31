@@ -46,12 +46,12 @@ class SmsDateFormatsTest {
         val now2026 = LocalDate.of(2026, 9, 13).atStartOfDay(zone).toInstant().toEpochMilli()
 
         val formattedCurrentYear = SmsDateFormats.shamsiDate(timestamp2026, now2026)
-        assertEquals("22 Shahrivar", formattedCurrentYear)
+        assertEquals("۲۲ شهریور", formattedCurrentYear)
 
         // Previous Shamsi year message: 2025-09-13 is in 1404
         val timestamp2025 = LocalDate.of(2025, 9, 13).atStartOfDay(zone).toInstant().toEpochMilli()
         val formattedPastYear = SmsDateFormats.shamsiDate(timestamp2025, now2026)
-        assertEquals("22 Shahrivar 1404", formattedPastYear)
+        assertEquals("۲۲ شهریور ۱۴۰۴", formattedPastYear)
     }
 
     @Test
@@ -63,7 +63,7 @@ class SmsDateFormatsTest {
         val gregorian = SmsDateFormats.formatDate(timestamp, useShamsi = false, now = now)
         val shamsi = SmsDateFormats.formatDate(timestamp, useShamsi = true, now = now)
 
-        assertEquals("22 Shahrivar", shamsi)
+        assertEquals("۲۲ شهریور", shamsi)
         assertTrue(gregorian.contains("13") || gregorian.contains("Sep"))
     }
 }
