@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,10 +59,8 @@ fun MainNavigation(
 
     NavDisplay(
         backStack = backStack,
-        onBack = { backStack.removeLastOrNull() },
-        // Both directions are exact mirrors of each other: the incoming screen travels the full
-        // width and the outgoing one travels the full width in the opposite direction. Slide and
-        // fade use the identical duration so entering and exiting a chat feel the same.
+        // Both directions are exact mirrors: slide-in + fade-in for incoming, slide-out + fade-out
+        // for outgoing. Same duration both directions so entering and exiting feel identical.
         transitionSpec = {
             (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                 (full * forwardSign).toInt()
@@ -73,6 +72,7 @@ fun MainNavigation(
                 )
         },
         popTransitionSpec = {
+            // Mirror of transitionSpec: when popping (back), incoming comes from the opposite side.
             (slideInHorizontally(animationSpec = tween(PageTransitionMillis)) { full ->
                 (-full * forwardSign).toInt()
             } + fadeIn(animationSpec = tween(PageTransitionMillis)))
@@ -135,6 +135,11 @@ fun MainNavigation(
             }
         }
     )
+
+    // Handle system back button so popTransitionSpec is used (same animation as app's back button).
+    BackHandler(enabled = true) {
+        backStack.removeLastOrNull()
+    }
 }
 
 /** Duration of the screen change animation, kept short so it never feels sluggish. */

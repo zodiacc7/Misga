@@ -244,8 +244,8 @@ fun ConversationsScreen(
                 actionLabel = context.getString(R.string.inbox_undo),
                 duration = SnackbarDuration.Indefinite
             )
-            dismissJob.cancel()
             if (result == SnackbarResult.ActionPerformed) {
+                dismissJob.cancel()
                 viewModel.undoDeleteConversation(thread.threadId)
             }
         }
